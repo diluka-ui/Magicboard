@@ -3,6 +3,8 @@ package com.magicboard.keyboard;
 import android.inputmethodservice.InputMethodService;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.graphics.Color;
@@ -13,6 +15,7 @@ public class MagicboardService extends InputMethodService {
 
     private LinearLayout keyboard;
     private boolean shiftOn = false;
+    private boolean numberMode = false;
 
     private int dp(float value) {
         return (int) (value * getResources()
@@ -22,7 +25,15 @@ public class MagicboardService extends InputMethodService {
     @Override
     public View onCreateInputView() {
 
+        buildKeyboard();
+
+        return keyboard;
+    }
+
+    private void buildKeyboard() {
+
         keyboard = new LinearLayout(this);
+
         keyboard.setOrientation(LinearLayout.VERTICAL);
         keyboard.setGravity(Gravity.CENTER);
         keyboard.setPadding(
@@ -31,14 +42,14 @@ public class MagicboardService extends InputMethodService {
                 dp(3),
                 dp(5)
         );
+
         keyboard.setBackgroundColor(Color.BLACK);
 
-        addLetterRow("QWERTYUIOP");
-        addMiddleRow();
-        addBottomLetterRow();
-        addControlRow();
-
-        return keyboard;
+        if (numberMode) {
+            buildNumberKeyboard();
+        } else {
+            buildLetterKeyboard();
+        }
     }
 
     private LinearLayout createRow() {
@@ -68,23 +79,21 @@ public class MagicboardService extends InputMethodService {
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
 
-        button.setPadding(
-                dp(1),
-                0,
-                dp(1),
-                0
+        GradientDrawable background =
+                new GradientDrawable();
+
+        background.setColor(
+                Color.rgb(24, 24, 24)
         );
 
-        GradientDrawable bg = new GradientDrawable();
-
-        bg.setColor(Color.rgb(24, 24, 24));
-        bg.setStroke(
+        background.setStroke(
                 dp(1),
                 Color.rgb(0, 255, 100)
         );
-        bg.setCornerRadius(dp(8));
 
-        button.setBackground(bg);
+        background.setCornerRadius(dp(8));
+
+        button.setBackground(background);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
@@ -102,27 +111,29 @@ public class MagicboardService extends InputMethodService {
 
         button.setLayoutParams(params);
 
-        button.setOnClickListener(v -> {
-
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input == null) return;
-
-            String value = text;
-
-            if (value.length() == 1 &&
-                    Character.isLetter(value.charAt(0))) {
-
-                value = shiftOn
-                        ? value.toUpperCase()
-                        : value.toLowerCase();
-            }
-
-            input.commitText(value, 1);
-        });
-
         return button;
+    }
+
+    private void buildLetterKeyboard() {
+
+        addLetterRow("QWERTYUIOP");
+        addLetterRow("ASDFGHJKL");
+
+        LinearLayout row = createRow();
+
+        addSpecialKey(row, "⇧", 1.35f);
+        addLetterKey(row, "Z");
+        addLetterKey(row, "X");
+        addLetterKey(row, "C");
+        addLetterKey(row, "V");
+        addLetterKey(row, "B");
+        addLetterKey(row, "N");
+        addLetterKey(row, "M");
+        addBackspace(row);
+
+        keyboard.addView(row);
+
+        addBottomRow();
     }
 
     private void addLetterRow(String letters) {
@@ -131,52 +142,90 @@ public class MagicboardService extends InputMethodService {
 
         for (int i = 0; i < letters.length(); i++) {
 
-            String key =
-                    String.valueOf(letters.charAt(i));
-
-            row.addView(createKey(key, 1));
+            addLetterKey(
+                    row,
+                    String.valueOf(letters.charAt(i))
+            );
         }
 
         keyboard.addView(row);
     }
 
-    private void addMiddleRow() {
+    private void addLetterKey(
+            LinearLayout row,
+            String letter) {
 
-        LinearLayout row = createRow();
+        Button button = createKey(
+                getLetter(letter),
+                1.0f
+        );
 
-        addKey(row, "A", 1);
-        addKey(row, "S", 1);
-        addKey(row, "D", 1);
-        addKey(row, "F", 1);
-        addKey(row, "G", 1);
-        addKey(row, "H", 1);
-        addKey(row, "J", 1);
-        addKey(row, "K", 1);
-        addKey(row, "L", 1);
+        button.setOnClickListener(v -> {
 
-        keyboard.addView(row);
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+
+                String value =
+                        shiftOn
+                                ? letter.toUpperCase()
+                                : letter.toLowerCase();
+
+                input.commitText(value, 1);
+
+                if (shiftOn) {
+                    shiftOn = false;
+                    refreshKeyboard();
+                }
+            }
+        });
+
+        row.addView(button);
     }
 
-    private void addBottomLetterRow() {
+    private String getLetter(String letter) {
 
-        LinearLayout row = createRow();
-
-        addKey(row, "⇧", 1.35f);
-
-        addKey(row, "Z", 1);
-        addKey(row, "X", 1);
-        addKey(row, "C", 1);
-        addKey(row, "V", 1);
-        addKey(row, "B", 1);
-        addKey(row, "N", 1);
-        addKey(row, "M", 1);
-
-        addKey(row, "⌫", 1.35f);
-
-        keyboard.addView(row);
+        return shiftOn
+                ? letter.toUpperCase()
+                : letter.toLowerCase();
     }
 
-    private void addControlRow() {
+    private void addSpecialKey(
+            LinearLayout row,
+            String text,
+            float weight) {
+
+        Button button = createKey(text, weight);
+
+        button.setOnClickListener(v -> {
+
+            shiftOn = !shiftOn;
+
+            refreshKeyboard();
+        });
+
+        row.addView(button);
+    }
+
+    private void addBackspace(LinearLayout row) {
+
+        Button button = createKey("⌫", 1.35f);
+
+        button.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+                input.deleteSurroundingText(1, 0);
+            }
+        });
+
+        row.addView(button);
+    }
+
+    private void addBottomRow() {
 
         LinearLayout row = createRow();
 
@@ -186,16 +235,27 @@ public class MagicboardService extends InputMethodService {
         Button enter = createKey("↵", 1.5f);
 
         numbers.setOnClickListener(v -> {
-            // Number/symbol layout will be added next.
+
+            numberMode = true;
+
+            refreshKeyboard();
         });
 
         emoji.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
+            try {
 
-            if (input != null) {
-                input.commitText("😊", 1);
+                InputMethodManager manager =
+                        (InputMethodManager)
+                        getSystemService(
+                                Context.INPUT_METHOD_SERVICE
+                        );
+
+                if (manager != null) {
+                    manager.showInputMethodPicker();
+                }
+
+            } catch (Exception ignored) {
             }
         });
 
@@ -233,38 +293,149 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
-    private void addKey(
+    private void buildNumberKeyboard() {
+
+        addNumberRow("1234567890");
+        addNumberRow("@#$%&*-+=()");
+
+        LinearLayout row = createRow();
+
+        Button abc = createKey("ABC", 1.35f);
+
+        abc.setOnClickListener(v -> {
+
+            numberMode = false;
+
+            refreshKeyboard();
+        });
+
+        row.addView(abc);
+
+        addNumberKey(row, "!");
+        addNumberKey(row, "?");
+        addNumberKey(row, ",");
+        addNumberKey(row, ".");
+        addNumberKey(row, "/");
+        addNumberKey(row, ":");
+        addNumberKey(row, ";");
+
+        addBackspace(row);
+
+        keyboard.addView(row);
+
+        addNumberBottomRow();
+    }
+
+    private void addNumberRow(String symbols) {
+
+        LinearLayout row = createRow();
+
+        for (int i = 0; i < symbols.length(); i++) {
+
+            addNumberKey(
+                    row,
+                    String.valueOf(symbols.charAt(i))
+            );
+        }
+
+        keyboard.addView(row);
+    }
+
+    private void addNumberKey(
             LinearLayout row,
-            String text,
-            float weight) {
+            String value) {
 
-        Button button = createKey(text, weight);
+        Button button = createKey(value, 1.0f);
 
-        if (text.equals("⇧")) {
+        button.setOnClickListener(v -> {
 
-            button.setOnClickListener(v -> {
+            InputConnection input =
+                    getCurrentInputConnection();
 
-                shiftOn = !shiftOn;
-
-                button.setText(
-                        shiftOn ? "⇧" : "⇧"
-                );
-            });
-        }
-
-        if (text.equals("⌫")) {
-
-            button.setOnClickListener(v -> {
-
-                InputConnection input =
-                        getCurrentInputConnection();
-
-                if (input != null) {
-                    input.deleteSurroundingText(1, 0);
-                }
-            });
-        }
+            if (input != null) {
+                input.commitText(value, 1);
+            }
+        });
 
         row.addView(button);
+    }
+
+    private void addNumberBottomRow() {
+
+        LinearLayout row = createRow();
+
+        Button abc = createKey("ABC", 1.4f);
+        Button emoji = createKey("☺", 1.0f);
+        Button space = createKey("SPACE", 4.2f);
+        Button enter = createKey("↵", 1.5f);
+
+        abc.setOnClickListener(v -> {
+
+            numberMode = false;
+
+            refreshKeyboard();
+        });
+
+        emoji.setOnClickListener(v -> {
+
+            try {
+
+                InputMethodManager manager =
+                        (InputMethodManager)
+                        getSystemService(
+                                Context.INPUT_METHOD_SERVICE
+                        );
+
+                if (manager != null) {
+                    manager.showInputMethodPicker();
+                }
+
+            } catch (Exception ignored) {
+            }
+        });
+
+        space.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+                input.commitText(" ", 1);
+            }
+        });
+
+        enter.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+
+                input.sendKeyEvent(
+                        new android.view.KeyEvent(
+                                android.view.KeyEvent.ACTION_DOWN,
+                                android.view.KeyEvent.KEYCODE_ENTER
+                        )
+                );
+            }
+        });
+
+        row.addView(abc);
+        row.addView(emoji);
+        row.addView(space);
+        row.addView(enter);
+
+        keyboard.addView(row);
+    }
+
+    private void refreshKeyboard() {
+
+        keyboard.removeAllViews();
+
+        if (numberMode) {
+            buildNumberKeyboard();
+        } else {
+            buildLetterKeyboard();
+        }
     }
 }
