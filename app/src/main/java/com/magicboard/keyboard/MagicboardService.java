@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Handler;
-import android.content.Context;
 
 public class MagicboardService extends InputMethodService {
 
@@ -38,7 +37,6 @@ public class MagicboardService extends InputMethodService {
     };
 
     private int dp(float value) {
-
         return (int) (
                 value *
                 getResources()
@@ -50,9 +48,7 @@ public class MagicboardService extends InputMethodService {
 
     @Override
     public View onCreateInputView() {
-
         buildKeyboard();
-
         return keyboard;
     }
 
@@ -84,6 +80,10 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
+    // =====================================================
+    // ROW
+    // =====================================================
+
     private LinearLayout createRow(int height) {
 
         LinearLayout row =
@@ -105,6 +105,10 @@ public class MagicboardService extends InputMethodService {
         return row;
     }
 
+    // =====================================================
+    // KEY
+    // =====================================================
+
     private Button createKey(
             String text,
             float weight) {
@@ -119,21 +123,23 @@ public class MagicboardService extends InputMethodService {
         button.setGravity(Gravity.CENTER);
         button.setPadding(0, 0, 0, 0);
 
-        GradientDrawable bg =
+        GradientDrawable background =
                 new GradientDrawable();
 
-        bg.setColor(
+        background.setColor(
                 Color.rgb(24, 24, 24)
         );
 
-        bg.setStroke(
+        background.setStroke(
                 dp(1),
                 Color.rgb(0, 255, 100)
         );
 
-        bg.setCornerRadius(dp(8));
+        background.setCornerRadius(
+                dp(8)
+        );
 
-        button.setBackground(bg);
+        button.setBackground(background);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
@@ -155,7 +161,7 @@ public class MagicboardService extends InputMethodService {
     }
 
     // =====================================================
-    // LETTER KEYBOARD
+    // TEXT KEYBOARD
     // =====================================================
 
     private void buildLetterKeyboard() {
@@ -184,8 +190,7 @@ public class MagicboardService extends InputMethodService {
         addControlRow();
     }
 
-    private void addLetterRow(
-            String letters) {
+    private void addLetterRow(String letters) {
 
         LinearLayout row =
                 createRow(60);
@@ -229,7 +234,10 @@ public class MagicboardService extends InputMethodService {
                                 ? letter.toUpperCase()
                                 : letter.toLowerCase();
 
-                input.commitText(value, 1);
+                input.commitText(
+                        value,
+                        1
+                );
 
                 if (shiftOn) {
                     shiftOn = false;
@@ -241,14 +249,15 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
+    // =====================================================
+    // SHIFT
+    // =====================================================
+
     private void addShift(
             LinearLayout row) {
 
         Button button =
-                createKey(
-                        shiftOn ? "⇧" : "⇧",
-                        1.35f
-                );
+                createKey("⇧", 1.35f);
 
         button.setOnClickListener(v -> {
 
@@ -312,12 +321,16 @@ public class MagicboardService extends InputMethodService {
                 getCurrentInputConnection();
 
         if (input != null) {
-            input.deleteSurroundingText(1, 0);
+
+            input.deleteSurroundingText(
+                    1,
+                    0
+            );
         }
     }
 
     // =====================================================
-    // CONTROL ROW
+    // TEXT CONTROL ROW
     // =====================================================
 
     private void addControlRow() {
@@ -529,7 +542,7 @@ public class MagicboardService extends InputMethodService {
 
     private void buildEmojiKeyboard() {
 
-        // Category bar
+        // CATEGORY BAR
         HorizontalScrollView categoryScroll =
                 new HorizontalScrollView(this);
 
@@ -537,157 +550,116 @@ public class MagicboardService extends InputMethodService {
                 false
         );
 
-        LinearLayout categories =
+        LinearLayout categoryBar =
                 new LinearLayout(this);
 
-        categories.setOrientation(
+        categoryBar.setOrientation(
                 LinearLayout.HORIZONTAL
         );
 
-        categories.setGravity(Gravity.CENTER);
+        categoryBar.setGravity(
+                Gravity.CENTER
+        );
 
-        addCategory(
-                categories,
+        categoryScroll.addView(categoryBar);
+
+        addCategoryButton(
+                categoryBar,
                 "😀",
-                new String[]{
-                        "😀","😃","😄","😁",
-                        "😆","😅","😂","🤣",
-                        "😊","😇","🙂","🙃",
-                        "😉","😌","😍","🥰",
-                        "😘","😗","😙","😚",
-                        "😋","😛","😝","😜",
-                        "🤪","🤨","🧐","🤓",
-                        "😎","🤩","🥳","😏",
-                        "😒","😞","😔","😟",
-                        "😕","🙁","☹️","😣",
-                        "😖","😫","😩","🥺",
-                        "😢","😭","😤","😠",
-                        "😡","🤬","🤯","😳"
-                }
+                SMILEYS
         );
 
-        addCategory(
-                categories,
+        addCategoryButton(
+                categoryBar,
                 "❤️",
-                new String[]{
-                        "❤️","🧡","💛","💚",
-                        "💙","💜","🖤","🤍",
-                        "🤎","💔","💕","💞",
-                        "💓","💗","💖","💘",
-                        "💝","💟","❣️","💯",
-                        "💫","✨","⭐","🌟"
-                }
+                HEARTS
         );
 
-        addCategory(
-                categories,
+        addCategoryButton(
+                categoryBar,
                 "🐶",
-                new String[]{
-                        "🐶","🐱","🐭","🐹",
-                        "🐰","🦊","🐻","🐼",
-                        "🐨","🐯","🦁","🐮",
-                        "🐷","🐸","🐵","🙈",
-                        "🙉","🙊","🐔","🐧",
-                        "🐦","🐤","🦄","🐝",
-                        "🦋","🐢","🐍","🐙"
-                }
+                ANIMALS
         );
 
-        addCategory(
-                categories,
+        addCategoryButton(
+                categoryBar,
                 "🍎",
-                new String[]{
-                        "🍎","🍐","🍊","🍋",
-                        "🍌","🍉","🍇","🍓",
-                        "🍒","🍑","🍍","🥭",
-                        "🥝","🍅","🥑","🍕",
-                        "🍔","🍟","🌭","🌮",
-                        "🍿","🍩","🍪","🎂"
-                }
+                FOOD
         );
 
-        addCategory(
-                categories,
+        addCategoryButton(
+                categoryBar,
                 "⚽",
-                new String[]{
-                        "⚽","🏀","🏈","⚾",
-                        "🎾","🏐","🏆","🥇",
-                        "🥈","🥉","🎮","🎯",
-                        "🎸","🎹","🎤","🎧",
-                        "🎬","🎨","🎭","🎪"
-                }
+                ACTIVITIES
         );
 
-        addCategory(
-                categories,
+        addCategoryButton(
+                categoryBar,
                 "🚗",
-                new String[]{
-                        "🚗","🚕","🚌","🚓",
-                        "🚑","🚒","🚚","🚲",
-                        "✈️","🚀","🚁","🚢",
-                        "🏠","🏢","🌍","🗺️"
-                }
+                TRAVEL
         );
 
-        addCategory(
-                categories,
-                "👍",
-                new String[]{
-                        "👍","👎","👌","✌️",
-                        "🤞","🤟","🤘","🤙",
-                        "👏","🙌","👐","🤲",
-                        "🙏","💪","👊","✊",
-                        "👋","🤝","☝️","👇"
-                }
+        addCategoryButton(
+                categoryBar,
+                "💡",
+                OBJECTS
         );
 
-        categoryScroll.addView(categories);
+        addCategoryButton(
+                categoryBar,
+                "🔣",
+                SYMBOLS
+        );
 
         keyboard.addView(
                 categoryScroll,
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(42)
+                        dp(46)
                 )
         );
 
-        // Emoji grid
-        addEmojiGrid(
-                new String[]{
-                        "😀","😃","😄","😁","😆","😅",
-                        "😂","🤣","😊","😇","🙂","🙃",
-                        "😉","😌","😍","🥰","😘","😗",
-                        "😙","😚","😋","😛","😝","😜",
-                        "🤪","🤨","🧐","🤓","😎","🤩",
-                        "🥳","😏","😒","😞","😔","😟",
-                        "😕","🙁","☹️","😣","😖","😫",
-                        "😩","🥺","😢","😭","😤","😠",
-                        "😡","🤬","🤯","😳","🥵","🥶",
-                        "😱","😨","😰","😥","😓","🤗",
-                        "🤔","🤭","🤫","🤥","😶","😐",
-                        "😑","😬","🙄","😯","😦","😧",
-                        "😮","😲","🥱","😴","🤤","😪",
-                        "😵","🤐","🥴","❤️","🧡","💛",
-                        "💚","💙","💜","🖤","🤍","🤎",
-                        "👍","👎","👌","✌️","🤞","🤟",
-                        "🤘","🤙","👏","🙌","🙏","💪",
-                        "🔥","⭐","🌟","✨","💥","🎉",
-                        "🎊","💯","✅","❌","❗","❓"
-                }
+        // EMOJI AREA
+        LinearLayout emojiArea =
+                new LinearLayout(this);
+
+        emojiArea.setOrientation(
+                LinearLayout.VERTICAL
         );
 
-        // Bottom controls
+        emojiArea.setGravity(
+                Gravity.CENTER
+        );
+
+        LinearLayout.LayoutParams areaParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1
+                );
+
+        keyboard.addView(
+                emojiArea,
+                areaParams
+        );
+
+        fillEmojiArea(
+                emojiArea,
+                SMILEYS
+        );
+
+        // BOTTOM
         LinearLayout bottom =
                 createRow(60);
 
         Button abc =
-                createKey("⌨ ABC", 1.6f);
+                createKey("⌨ ABC", 1.5f);
 
         Button numbers =
-                createKey("123", 1.2f);
+                createKey("123", 1.15f);
 
         Button space =
-                createKey("SPACE", 3.8f);
+                createKey("SPACE", 3.9f);
 
         Button back =
                 createKey("⌫", 1.4f);
@@ -759,142 +731,206 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(bottom);
     }
 
-    private void addCategory(
-            LinearLayout categories,
+    // =====================================================
+    // CATEGORY BUTTON
+    // =====================================================
+
+    private void addCategoryButton(
+            LinearLayout bar,
             String icon,
             String[] emojis) {
 
         Button button =
                 createKey(icon, 1);
 
-        button.setTextSize(20);
+        button.setTextSize(19);
+
+        button.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        dp(58),
+                        dp(42)
+                )
+        );
 
         button.setOnClickListener(v -> {
 
-            showEmojiSet(emojis);
+            View area =
+                    keyboard.getChildAt(1);
+
+            if (area instanceof LinearLayout) {
+
+                LinearLayout emojiArea =
+                        (LinearLayout) area;
+
+                fillEmojiArea(
+                        emojiArea,
+                        emojis
+                );
+            }
         });
 
-        categories.addView(button);
+        bar.addView(button);
     }
 
-    private void showEmojiSet(
+    // =====================================================
+    // EMOJI AREA
+    // =====================================================
+
+    private void fillEmojiArea(
+            LinearLayout area,
             String[] emojis) {
 
-        // Keep the same keyboard height.
-        // Only replace the grid area.
-
-        int childCount =
-                keyboard.getChildCount();
-
-        if (childCount < 2) {
-            return;
-        }
-
-        keyboard.removeViews(
-                1,
-                childCount - 2
-        );
-
-        LinearLayout grid =
-                createEmojiGrid(emojis);
-
-        keyboard.addView(
-                grid,
-                1
-        );
-    }
-
-    private void addEmojiGrid(
-            String[] emojis) {
-
-        LinearLayout grid =
-                createEmojiGrid(emojis);
-
-        keyboard.addView(
-                grid,
-                1
-        );
-    }
-
-    private LinearLayout createEmojiGrid(
-            String[] emojis) {
-
-        LinearLayout grid =
-                new LinearLayout(this);
-
-        grid.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        grid.setGravity(Gravity.CENTER);
-
-        LinearLayout.LayoutParams gridParams =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        0,
-                        1
-                );
-
-        grid.setLayoutParams(gridParams);
+        area.removeAllViews();
 
         int columns = 8;
 
-        LinearLayout row = null;
-
-        for (int i = 0;
-             i < emojis.length;
-             i++) {
-
-            if (i % columns == 0) {
-
-                row = new LinearLayout(this);
-
-                row.setOrientation(
-                        LinearLayout.HORIZONTAL
+        int rows =
+                (int) Math.ceil(
+                        emojis.length /
+                        (double) columns
                 );
 
-                row.setGravity(Gravity.CENTER);
+        for (int r = 0;
+             r < rows;
+             r++) {
 
-                grid.addView(
-                        row,
-                        new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                0,
+            LinearLayout row =
+                    new LinearLayout(this);
+
+            row.setOrientation(
+                    LinearLayout.HORIZONTAL
+            );
+
+            row.setGravity(
+                    Gravity.CENTER
+            );
+
+            row.setLayoutParams(
+                    new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            0,
+                            1
+                    )
+            );
+
+            for (int c = 0;
+                 c < columns;
+                 c++) {
+
+                int index =
+                        r * columns + c;
+
+                if (index >= emojis.length) {
+                    break;
+                }
+
+                String value =
+                        emojis[index];
+
+                Button emoji =
+                        createKey(
+                                value,
                                 1
-                        )
-                );
+                        );
+
+                emoji.setTextSize(20);
+
+                emoji.setOnClickListener(v -> {
+
+                    InputConnection input =
+                            getCurrentInputConnection();
+
+                    if (input != null) {
+
+                        input.commitText(
+                                value,
+                                1
+                        );
+                    }
+                });
+
+                row.addView(emoji);
             }
 
-            Button emoji =
-                    createKey(
-                            emojis[i],
-                            1
-                    );
-
-            emoji.setTextSize(21);
-
-            final String value =
-                    emojis[i];
-
-            emoji.setOnClickListener(v -> {
-
-                InputConnection input =
-                        getCurrentInputConnection();
-
-                if (input != null) {
-
-                    input.commitText(
-                            value,
-                            1
-                    );
-                }
-            });
-
-            row.addView(emoji);
+            area.addView(row);
         }
-
-        return grid;
     }
+
+    // =====================================================
+    // EMOJI DATA
+    // =====================================================
+
+    private static final String[] SMILEYS = {
+            "😀","😃","😄","😁","😆","😅",
+            "😂","🤣","😊","😇","🙂","🙃",
+            "😉","😌","😍","🥰","😘","😗",
+            "😙","😚","😋","😛","😝","😜",
+            "🤪","🤨","🧐","🤓","😎","🤩",
+            "🥳","😏","😒","😞","😔","😟",
+            "😕","🙁","☹️","😣","😖","😫",
+            "😩","🥺","😢","😭","😤","😠",
+            "😡","🤬","🤯","😳","🥵","🥶",
+            "😱","😨","😰","😥","😓","🤗",
+            "🤔","🤭","🤫","🤥","😶","😐"
+    };
+
+    private static final String[] HEARTS = {
+            "❤️","🧡","💛","💚","💙","💜",
+            "🖤","🤍","🤎","💔","💕","💞",
+            "💓","💗","💖","💘","💝","💟",
+            "❣️","💯","💫","✨","⭐","🌟",
+            "🔥","💥","🎉","🎊"
+    };
+
+    private static final String[] ANIMALS = {
+            "🐶","🐱","🐭","🐹","🐰","🦊",
+            "🐻","🐼","🐨","🐯","🦁","🐮",
+            "🐷","🐸","🐵","🙈","🙉","🙊",
+            "🐔","🐧","🐦","🐤","🦄","🐝",
+            "🦋","🐢","🐍","🐙","🐬","🐳",
+            "🦈","🐘","🦒","🦓","🦍","🐊"
+    };
+
+    private static final String[] FOOD = {
+            "🍎","🍐","🍊","🍋","🍌","🍉",
+            "🍇","🍓","🍒","🍑","🍍","🥭",
+            "🥝","🍅","🥑","🍕","🍔","🍟",
+            "🌭","🌮","🍿","🍩","🍪","🎂",
+            "🍰","🍫","🍭","🍬","🍜","🍣",
+            "🍗","🥗","🍞","🧀","🥚","🍳"
+    };
+
+    private static final String[] ACTIVITIES = {
+            "⚽","🏀","🏈","⚾","🎾","🏐",
+            "🏆","🥇","🥈","🥉","🎮","🎯",
+            "🎸","🎹","🎤","🎧","🎬","🎨",
+            "🎭","🎪","🎲","🎳","🏋️","🚴",
+            "🏊","⛷️","🏄","🥊"
+    };
+
+    private static final String[] TRAVEL = {
+            "🚗","🚕","🚌","🚓","🚑","🚒",
+            "🚚","🚲","✈️","🚀","🚁","🚢",
+            "🏠","🏢","🏥","🏫","🌍","🌎",
+            "🌏","🗺️","🏖️","🏝️","⛰️","🌋",
+            "🌅","🌄","🗽","🗼"
+    };
+
+    private static final String[] OBJECTS = {
+            "⌚","📱","💻","⌨️","🖥️","📷",
+            "📺","📻","☎️","💡","🔦","🔑",
+            "🔒","🔓","🔨","🛠️","⚙️","🧰",
+            "📚","📖","✏️","📝","📌","📎",
+            "💰","💳","🎁","🎈"
+    };
+
+    private static final String[] SYMBOLS = {
+            "❤️","✔️","✅","❌","❗","❓",
+            "‼️","⁉️","⚠️","⭕","🚫","♻️",
+            "☑️","🔴","🟠","🟡","🟢","🔵",
+            "🟣","⚫","⚪","⭐","✨","⚡",
+            "☀️","🌙","☁️","☔"
+    };
 
     // =====================================================
     // REFRESH
@@ -904,6 +940,12 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.removeAllViews();
 
-        buildKeyboard();
+        if (emojiMode) {
+            buildEmojiKeyboard();
+        } else if (numberMode) {
+            buildNumberKeyboard();
+        } else {
+            buildLetterKeyboard();
+        }
     }
 }
