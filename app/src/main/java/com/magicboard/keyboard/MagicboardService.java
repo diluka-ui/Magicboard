@@ -14,13 +14,23 @@ public class MagicboardService extends InputMethodService {
     private LinearLayout keyboard;
     private boolean shiftOn = false;
 
+    private int dp(float value) {
+        return (int) (value * getResources()
+                .getDisplayMetrics().density + 0.5f);
+    }
+
     @Override
     public View onCreateInputView() {
 
         keyboard = new LinearLayout(this);
         keyboard.setOrientation(LinearLayout.VERTICAL);
         keyboard.setGravity(Gravity.CENTER);
-        keyboard.setPadding(3, 4, 3, 4);
+        keyboard.setPadding(
+                dp(3),
+                dp(4),
+                dp(3),
+                dp(5)
+        );
         keyboard.setBackgroundColor(Color.BLACK);
 
         addLetterRow("QWERTYUIOP");
@@ -31,32 +41,65 @@ public class MagicboardService extends InputMethodService {
         return keyboard;
     }
 
+    private LinearLayout createRow() {
+
+        LinearLayout row = new LinearLayout(this);
+
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+
+        row.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(60)
+                )
+        );
+
+        return row;
+    }
+
     private Button createKey(String text, float weight) {
 
         Button button = new Button(this);
 
         button.setText(text);
         button.setTextColor(Color.WHITE);
-        button.setTextSize(14);
+        button.setTextSize(15);
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(0, 0, 0, 0);
+
+        button.setPadding(
+                dp(1),
+                0,
+                dp(1),
+                0
+        );
 
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.rgb(25, 25, 25));
-        bg.setStroke(1, Color.rgb(0, 255, 100));
-        bg.setCornerRadius(7);
+
+        bg.setColor(Color.rgb(24, 24, 24));
+        bg.setStroke(
+                dp(1),
+                Color.rgb(0, 255, 100)
+        );
+        bg.setCornerRadius(dp(8));
 
         button.setBackground(bg);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         0,
-                        48,
+                        dp(56),
                         weight
                 );
 
-        params.setMargins(2, 2, 2, 2);
+        params.setMargins(
+                dp(2),
+                dp(2),
+                dp(2),
+                dp(2)
+        );
+
         button.setLayoutParams(params);
 
         button.setOnClickListener(v -> {
@@ -64,20 +107,19 @@ public class MagicboardService extends InputMethodService {
             InputConnection input =
                     getCurrentInputConnection();
 
-            if (input != null) {
+            if (input == null) return;
 
-                String value = text;
+            String value = text;
 
-                if (value.length() == 1 &&
-                        Character.isLetter(value.charAt(0))) {
+            if (value.length() == 1 &&
+                    Character.isLetter(value.charAt(0))) {
 
-                    value = shiftOn
-                            ? value.toUpperCase()
-                            : value.toLowerCase();
-                }
-
-                input.commitText(value, 1);
+                value = shiftOn
+                        ? value.toUpperCase()
+                        : value.toLowerCase();
             }
+
+            input.commitText(value, 1);
         });
 
         return button;
@@ -85,16 +127,7 @@ public class MagicboardService extends InputMethodService {
 
     private void addLetterRow(String letters) {
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-
-        row.setLayoutParams(
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        52
-                )
-        );
+        LinearLayout row = createRow();
 
         for (int i = 0; i < letters.length(); i++) {
 
@@ -109,16 +142,7 @@ public class MagicboardService extends InputMethodService {
 
     private void addMiddleRow() {
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-
-        row.setLayoutParams(
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        52
-                )
-        );
+        LinearLayout row = createRow();
 
         addKey(row, "A", 1);
         addKey(row, "S", 1);
@@ -135,18 +159,10 @@ public class MagicboardService extends InputMethodService {
 
     private void addBottomLetterRow() {
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
+        LinearLayout row = createRow();
 
-        row.setLayoutParams(
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        52
-                )
-        );
+        addKey(row, "⇧", 1.35f);
 
-        addKey(row, "⇧", 1.3f);
         addKey(row, "Z", 1);
         addKey(row, "X", 1);
         addKey(row, "C", 1);
@@ -154,31 +170,23 @@ public class MagicboardService extends InputMethodService {
         addKey(row, "B", 1);
         addKey(row, "N", 1);
         addKey(row, "M", 1);
-        addKey(row, "⌫", 1.3f);
+
+        addKey(row, "⌫", 1.35f);
 
         keyboard.addView(row);
     }
 
     private void addControlRow() {
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
+        LinearLayout row = createRow();
 
-        row.setLayoutParams(
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        52
-                )
-        );
-
-        Button numbers = createKey("123", 1.3f);
+        Button numbers = createKey("123", 1.4f);
         Button emoji = createKey("☺", 1.0f);
-        Button space = createKey("SPACE", 4.0f);
+        Button space = createKey("SPACE", 4.2f);
         Button enter = createKey("↵", 1.5f);
 
         numbers.setOnClickListener(v -> {
-            // Numbers/symbol mode will be added next.
+            // Number/symbol layout will be added next.
         });
 
         emoji.setOnClickListener(v -> {
@@ -207,6 +215,7 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
+
                 input.sendKeyEvent(
                         new android.view.KeyEvent(
                                 android.view.KeyEvent.ACTION_DOWN,
