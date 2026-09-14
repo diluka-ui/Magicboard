@@ -5,11 +5,13 @@ import android.view.View;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputConnection;
 import android.widget.Button;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Handler;
+import android.content.Context;
 
 public class MagicboardService extends InputMethodService {
 
@@ -66,28 +68,23 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.setPadding(
                 dp(3),
-                dp(4),
                 dp(3),
-                dp(5)
+                dp(3),
+                dp(4)
         );
 
         keyboard.setBackgroundColor(Color.BLACK);
 
         if (emojiMode) {
-
             buildEmojiKeyboard();
-
         } else if (numberMode) {
-
             buildNumberKeyboard();
-
         } else {
-
             buildLetterKeyboard();
         }
     }
 
-    private LinearLayout createRow() {
+    private LinearLayout createRow(int height) {
 
         LinearLayout row =
                 new LinearLayout(this);
@@ -101,7 +98,7 @@ public class MagicboardService extends InputMethodService {
         row.setLayoutParams(
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(60)
+                        dp(height)
                 )
         );
 
@@ -120,6 +117,7 @@ public class MagicboardService extends InputMethodService {
         button.setTextSize(15);
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
+        button.setPadding(0, 0, 0, 0);
 
         GradientDrawable bg =
                 new GradientDrawable();
@@ -133,9 +131,7 @@ public class MagicboardService extends InputMethodService {
                 Color.rgb(0, 255, 100)
         );
 
-        bg.setCornerRadius(
-                dp(8)
-        );
+        bg.setCornerRadius(dp(8));
 
         button.setBackground(bg);
 
@@ -158,9 +154,9 @@ public class MagicboardService extends InputMethodService {
         return button;
     }
 
-    // =========================
+    // =====================================================
     // LETTER KEYBOARD
-    // =========================
+    // =====================================================
 
     private void buildLetterKeyboard() {
 
@@ -169,7 +165,7 @@ public class MagicboardService extends InputMethodService {
         addLetterRow("ASDFGHJKL");
 
         LinearLayout row =
-                createRow();
+                createRow(60);
 
         addShift(row);
 
@@ -185,14 +181,14 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
 
-        addBottomRow();
+        addControlRow();
     }
 
     private void addLetterRow(
             String letters) {
 
         LinearLayout row =
-                createRow();
+                createRow(60);
 
         for (int i = 0;
              i < letters.length();
@@ -218,7 +214,7 @@ public class MagicboardService extends InputMethodService {
                         shiftOn
                                 ? letter.toUpperCase()
                                 : letter.toLowerCase(),
-                        1.0f
+                        1
                 );
 
         button.setOnClickListener(v -> {
@@ -233,15 +229,10 @@ public class MagicboardService extends InputMethodService {
                                 ? letter.toUpperCase()
                                 : letter.toLowerCase();
 
-                input.commitText(
-                        value,
-                        1
-                );
+                input.commitText(value, 1);
 
                 if (shiftOn) {
-
                     shiftOn = false;
-
                     refreshKeyboard();
                 }
             }
@@ -269,18 +260,15 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    // =========================
+    // =====================================================
     // BACKSPACE
-    // =========================
+    // =====================================================
 
     private void addBackspace(
             LinearLayout row) {
 
         Button button =
-                createKey(
-                        "⌫",
-                        1.35f
-                );
+                createKey("⌫", 1.35f);
 
         button.setOnTouchListener(
                 (v, event) -> {
@@ -324,51 +312,34 @@ public class MagicboardService extends InputMethodService {
                 getCurrentInputConnection();
 
         if (input != null) {
-
-            input.deleteSurroundingText(
-                    1,
-                    0
-            );
+            input.deleteSurroundingText(1, 0);
         }
     }
 
-    // =========================
-    // BOTTOM ROW
-    // =========================
+    // =====================================================
+    // CONTROL ROW
+    // =====================================================
 
-    private void addBottomRow() {
+    private void addControlRow() {
 
         LinearLayout row =
-                createRow();
+                createRow(60);
 
         Button numbers =
-                createKey(
-                        "123",
-                        1.4f
-                );
+                createKey("123", 1.35f);
 
         Button emoji =
-                createKey(
-                        "😊",
-                        1.0f
-                );
+                createKey("😊", 1.0f);
 
         Button space =
-                createKey(
-                        "SPACE",
-                        4.2f
-                );
+                createKey("SPACE", 4.3f);
 
         Button enter =
-                createKey(
-                        "↵",
-                        1.5f
-                );
+                createKey("↵", 1.5f);
 
         numbers.setOnClickListener(v -> {
 
             numberMode = true;
-
             emojiMode = false;
 
             refreshKeyboard();
@@ -377,7 +348,6 @@ public class MagicboardService extends InputMethodService {
         emoji.setOnClickListener(v -> {
 
             emojiMode = true;
-
             numberMode = false;
 
             refreshKeyboard();
@@ -389,11 +359,7 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-
-                input.commitText(
-                        " ",
-                        1
-                );
+                input.commitText(" ", 1);
             }
         });
 
@@ -421,31 +387,25 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
-    // =========================
+    // =====================================================
     // NUMBER KEYBOARD
-    // =========================
+    // =====================================================
 
     private void buildNumberKeyboard() {
 
         addNumberRow("1234567890");
 
-        addNumberRow(
-                "@#$%&*-+=()"
-        );
+        addNumberRow("@#$%&*-+=");
 
         LinearLayout row =
-                createRow();
+                createRow(60);
 
         Button abc =
-                createKey(
-                        "ABC",
-                        1.35f
-                );
+                createKey("ABC", 1.35f);
 
         abc.setOnClickListener(v -> {
 
             numberMode = false;
-
             emojiMode = false;
 
             refreshKeyboard();
@@ -465,14 +425,64 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
 
-        addNumberBottomRow();
+        LinearLayout bottom =
+                createRow(60);
+
+        Button emoji =
+                createKey("😊", 1.0f);
+
+        Button space =
+                createKey("SPACE", 4.3f);
+
+        Button enter =
+                createKey("↵", 1.5f);
+
+        emoji.setOnClickListener(v -> {
+
+            emojiMode = true;
+            numberMode = false;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+                input.commitText(" ", 1);
+            }
+        });
+
+        enter.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+
+                input.sendKeyEvent(
+                        new android.view.KeyEvent(
+                                android.view.KeyEvent.ACTION_DOWN,
+                                android.view.KeyEvent.KEYCODE_ENTER
+                        )
+                );
+            }
+        });
+
+        bottom.addView(emoji);
+        bottom.addView(space);
+        bottom.addView(enter);
+
+        keyboard.addView(bottom);
     }
 
     private void addNumberRow(
             String symbols) {
 
         LinearLayout row =
-                createRow();
+                createRow(60);
 
         for (int i = 0;
              i < symbols.length();
@@ -494,10 +504,7 @@ public class MagicboardService extends InputMethodService {
             String value) {
 
         Button button =
-                createKey(
-                        value,
-                        1.0f
-                );
+                createKey(value, 1);
 
         button.setOnClickListener(v -> {
 
@@ -516,208 +523,178 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    private void addNumberBottomRow() {
-
-        LinearLayout row =
-                createRow();
-
-        Button abc =
-                createKey(
-                        "ABC",
-                        1.4f
-                );
-
-        Button emoji =
-                createKey(
-                        "😊",
-                        1.0f
-                );
-
-        Button space =
-                createKey(
-                        "SPACE",
-                        4.2f
-                );
-
-        Button enter =
-                createKey(
-                        "↵",
-                        1.5f
-                );
-
-        abc.setOnClickListener(v -> {
-
-            numberMode = false;
-
-            emojiMode = false;
-
-            refreshKeyboard();
-        });
-
-        emoji.setOnClickListener(v -> {
-
-            emojiMode = true;
-
-            numberMode = false;
-
-            refreshKeyboard();
-        });
-
-        space.setOnClickListener(v -> {
-
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.commitText(
-                        " ",
-                        1
-                );
-            }
-        });
-
-        enter.setOnClickListener(v -> {
-
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
-        });
-
-        row.addView(abc);
-        row.addView(emoji);
-        row.addView(space);
-        row.addView(enter);
-
-        keyboard.addView(row);
-    }
-
-    // =========================
+    // =====================================================
     // EMOJI KEYBOARD
-    // =========================
+    // =====================================================
 
     private void buildEmojiKeyboard() {
 
-        addEmojiRow(
-                "😀 😃 😄 😁 😆 😅 😂 🤣"
+        // Category bar
+        HorizontalScrollView categoryScroll =
+                new HorizontalScrollView(this);
+
+        categoryScroll.setHorizontalScrollBarEnabled(
+                false
         );
 
-        addEmojiRow(
-                "😊 😇 🙂 🙃 😉 😌 😍 🥰 😘"
+        LinearLayout categories =
+                new LinearLayout(this);
+
+        categories.setOrientation(
+                LinearLayout.HORIZONTAL
         );
 
-        addEmojiRow(
-                "😗 😙 😚 😋 😛 😝 😜 🤪"
+        categories.setGravity(Gravity.CENTER);
+
+        addCategory(
+                categories,
+                "😀",
+                new String[]{
+                        "😀","😃","😄","😁",
+                        "😆","😅","😂","🤣",
+                        "😊","😇","🙂","🙃",
+                        "😉","😌","😍","🥰",
+                        "😘","😗","😙","😚",
+                        "😋","😛","😝","😜",
+                        "🤪","🤨","🧐","🤓",
+                        "😎","🤩","🥳","😏",
+                        "😒","😞","😔","😟",
+                        "😕","🙁","☹️","😣",
+                        "😖","😫","😩","🥺",
+                        "😢","😭","😤","😠",
+                        "😡","🤬","🤯","😳"
+                }
         );
 
-        addEmojiRow(
-                "🤨 🧐 🤓 😎 🤩 🥳 😏 😒"
+        addCategory(
+                categories,
+                "❤️",
+                new String[]{
+                        "❤️","🧡","💛","💚",
+                        "💙","💜","🖤","🤍",
+                        "🤎","💔","💕","💞",
+                        "💓","💗","💖","💘",
+                        "💝","💟","❣️","💯",
+                        "💫","✨","⭐","🌟"
+                }
         );
 
-        addEmojiRow(
-                "😞 😔 😟 😕 🙁 ☹️ 😣 😖"
+        addCategory(
+                categories,
+                "🐶",
+                new String[]{
+                        "🐶","🐱","🐭","🐹",
+                        "🐰","🦊","🐻","🐼",
+                        "🐨","🐯","🦁","🐮",
+                        "🐷","🐸","🐵","🙈",
+                        "🙉","🙊","🐔","🐧",
+                        "🐦","🐤","🦄","🐝",
+                        "🦋","🐢","🐍","🐙"
+                }
         );
 
-        addEmojiRow(
-                "😫 😩 🥺 😢 😭 😤 😠 😡"
+        addCategory(
+                categories,
+                "🍎",
+                new String[]{
+                        "🍎","🍐","🍊","🍋",
+                        "🍌","🍉","🍇","🍓",
+                        "🍒","🍑","🍍","🥭",
+                        "🥝","🍅","🥑","🍕",
+                        "🍔","🍟","🌭","🌮",
+                        "🍿","🍩","🍪","🎂"
+                }
         );
 
-        addEmojiRow(
-                "🤬 🤯 😳 🥵 🥶 😱 😨 😰"
+        addCategory(
+                categories,
+                "⚽",
+                new String[]{
+                        "⚽","🏀","🏈","⚾",
+                        "🎾","🏐","🏆","🥇",
+                        "🥈","🥉","🎮","🎯",
+                        "🎸","🎹","🎤","🎧",
+                        "🎬","🎨","🎭","🎪"
+                }
         );
 
-        addEmojiRow(
-                "😥 😓 🤗 🤔 🤭 🤫 🤥 😶"
+        addCategory(
+                categories,
+                "🚗",
+                new String[]{
+                        "🚗","🚕","🚌","🚓",
+                        "🚑","🚒","🚚","🚲",
+                        "✈️","🚀","🚁","🚢",
+                        "🏠","🏢","🌍","🗺️"
+                }
         );
 
-        addEmojiRow(
-                "😐 😑 😬 🙄 😯 😦 😧 😮"
+        addCategory(
+                categories,
+                "👍",
+                new String[]{
+                        "👍","👎","👌","✌️",
+                        "🤞","🤟","🤘","🤙",
+                        "👏","🙌","👐","🤲",
+                        "🙏","💪","👊","✊",
+                        "👋","🤝","☝️","👇"
+                }
         );
 
-        addEmojiRow(
-                "😲 🥱 😴 🤤 😪 😵 🤐 🥴"
+        categoryScroll.addView(categories);
+
+        keyboard.addView(
+                categoryScroll,
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(42)
+                )
         );
 
-        addEmojiRow(
-                "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎"
+        // Emoji grid
+        addEmojiGrid(
+                new String[]{
+                        "😀","😃","😄","😁","😆","😅",
+                        "😂","🤣","😊","😇","🙂","🙃",
+                        "😉","😌","😍","🥰","😘","😗",
+                        "😙","😚","😋","😛","😝","😜",
+                        "🤪","🤨","🧐","🤓","😎","🤩",
+                        "🥳","😏","😒","😞","😔","😟",
+                        "😕","🙁","☹️","😣","😖","😫",
+                        "😩","🥺","😢","😭","😤","😠",
+                        "😡","🤬","🤯","😳","🥵","🥶",
+                        "😱","😨","😰","😥","😓","🤗",
+                        "🤔","🤭","🤫","🤥","😶","😐",
+                        "😑","😬","🙄","😯","😦","😧",
+                        "😮","😲","🥱","😴","🤤","😪",
+                        "😵","🤐","🥴","❤️","🧡","💛",
+                        "💚","💙","💜","🖤","🤍","🤎",
+                        "👍","👎","👌","✌️","🤞","🤟",
+                        "🤘","🤙","👏","🙌","🙏","💪",
+                        "🔥","⭐","🌟","✨","💥","🎉",
+                        "🎊","💯","✅","❌","❗","❓"
+                }
         );
 
-        addEmojiRow(
-                "👍 👎 👌 ✌️ 🤞 🤟 🤘 🤙"
-        );
-
-        addEmojiRow(
-                "👏 🙌 👐 🤲 🙏 💪 👊 ✊"
-        );
-
-        addEmojiRow(
-                "🔥 ⭐ 🌟 ✨ 💫 💥 🎉 🎊"
-        );
-
-        addEmojiRow(
-                "💯 ✅ ❌ ❗ ❓ ⚡ 💡 🎯"
-        );
-
-        addEmojiRow(
-                "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼"
-        );
-
-        addEmojiRow(
-                "🍎 🍊 🍋 🍉 🍇 🍓 🍒 🍌"
-        );
-
-        addEmojiRow(
-                "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏆 🎮"
-        );
-
-        addEmojiRow(
-                "🚗 🚕 🚌 🚓 🚑 ✈️ 🚀 🚲"
-        );
-
-        addEmojiRow(
-                "🌞 🌙 ⭐ 🌈 ☁️ 🌧️ ❄️ ⚡"
-        );
-
+        // Bottom controls
         LinearLayout bottom =
-                createRow();
+                createRow(60);
 
         Button abc =
-                createKey(
-                        "ABC",
-                        1.5f
-                );
+                createKey("⌨ ABC", 1.6f);
 
         Button numbers =
-                createKey(
-                        "123",
-                        1.2f
-                );
+                createKey("123", 1.2f);
 
         Button space =
-                createKey(
-                        "SPACE",
-                        4.0f
-                );
+                createKey("SPACE", 3.8f);
 
         Button back =
-                createKey(
-                        "⌫",
-                        1.4f
-                );
+                createKey("⌫", 1.4f);
 
         abc.setOnClickListener(v -> {
 
             emojiMode = false;
-
             numberMode = false;
 
             refreshKeyboard();
@@ -726,7 +703,6 @@ public class MagicboardService extends InputMethodService {
         numbers.setOnClickListener(v -> {
 
             emojiMode = false;
-
             numberMode = true;
 
             refreshKeyboard();
@@ -738,11 +714,7 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-
-                input.commitText(
-                        " ",
-                        1
-                );
+                input.commitText(" ", 1);
             }
         });
 
@@ -787,26 +759,124 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(bottom);
     }
 
-    private void addEmojiRow(
-            String emojiText) {
+    private void addCategory(
+            LinearLayout categories,
+            String icon,
+            String[] emojis) {
 
-        LinearLayout row =
-                createRow();
+        Button button =
+                createKey(icon, 1);
 
-        String[] emojis =
-                emojiText.split(" ");
+        button.setTextSize(20);
 
-        for (String emoji : emojis) {
+        button.setOnClickListener(v -> {
 
-            Button button =
+            showEmojiSet(emojis);
+        });
+
+        categories.addView(button);
+    }
+
+    private void showEmojiSet(
+            String[] emojis) {
+
+        // Keep the same keyboard height.
+        // Only replace the grid area.
+
+        int childCount =
+                keyboard.getChildCount();
+
+        if (childCount < 2) {
+            return;
+        }
+
+        keyboard.removeViews(
+                1,
+                childCount - 2
+        );
+
+        LinearLayout grid =
+                createEmojiGrid(emojis);
+
+        keyboard.addView(
+                grid,
+                1
+        );
+    }
+
+    private void addEmojiGrid(
+            String[] emojis) {
+
+        LinearLayout grid =
+                createEmojiGrid(emojis);
+
+        keyboard.addView(
+                grid,
+                1
+        );
+    }
+
+    private LinearLayout createEmojiGrid(
+            String[] emojis) {
+
+        LinearLayout grid =
+                new LinearLayout(this);
+
+        grid.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        grid.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams gridParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1
+                );
+
+        grid.setLayoutParams(gridParams);
+
+        int columns = 8;
+
+        LinearLayout row = null;
+
+        for (int i = 0;
+             i < emojis.length;
+             i++) {
+
+            if (i % columns == 0) {
+
+                row = new LinearLayout(this);
+
+                row.setOrientation(
+                        LinearLayout.HORIZONTAL
+                );
+
+                row.setGravity(Gravity.CENTER);
+
+                grid.addView(
+                        row,
+                        new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                0,
+                                1
+                        )
+                );
+            }
+
+            Button emoji =
                     createKey(
-                            emoji,
-                            1.0f
+                            emojis[i],
+                            1
                     );
 
-            button.setTextSize(22);
+            emoji.setTextSize(21);
 
-            button.setOnClickListener(v -> {
+            final String value =
+                    emojis[i];
+
+            emoji.setOnClickListener(v -> {
 
                 InputConnection input =
                         getCurrentInputConnection();
@@ -814,37 +884,26 @@ public class MagicboardService extends InputMethodService {
                 if (input != null) {
 
                     input.commitText(
-                            emoji,
+                            value,
                             1
                     );
                 }
             });
 
-            row.addView(button);
+            row.addView(emoji);
         }
 
-        keyboard.addView(row);
+        return grid;
     }
 
-    // =========================
+    // =====================================================
     // REFRESH
-    // =========================
+    // =====================================================
 
     private void refreshKeyboard() {
 
         keyboard.removeAllViews();
 
-        if (emojiMode) {
-
-            buildEmojiKeyboard();
-
-        } else if (numberMode) {
-
-            buildNumberKeyboard();
-
-        } else {
-
-            buildLetterKeyboard();
-        }
+        buildKeyboard();
     }
 }
