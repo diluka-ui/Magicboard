@@ -10,10 +10,17 @@ import android.widget.ScrollView;
 import android.widget.LinearLayout;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable.Orientation;
 import android.view.Gravity;
 import android.os.Handler;
-import java.util.HashMap;
-import java.util.Map;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.view.ViewGroup;
+import java.io.InputStream;
 
 public class MagicboardService extends InputMethodService {
 
@@ -27,9 +34,6 @@ public class MagicboardService extends InputMethodService {
 
     private long lastShiftTap = 0;
 
-    /*
-     * Keep the same overall keyboard height.
-     */
     private static final int KEYBOARD_CONTENT_HEIGHT = 240;
     private static final int EMOJI_CATEGORY_HEIGHT = 46;
     private static final int EMOJI_AREA_HEIGHT = 134;
@@ -37,17 +41,17 @@ public class MagicboardService extends InputMethodService {
 
     private Handler deleteHandler = new Handler();
 
-    /*
-     * Sinhala phonetic composing buffer.
-     *
-     * Example:
-     * amma -> අම්මා
-     * mama -> මම
-     * api  -> අපි
-     * mage -> මගේ
-     * oyā  -> ඔයා
-     */
     private String sinhalaBuffer = "";
+
+    private SharedPreferences stylePrefs;
+
+    private int keyboardBackgroundColor;
+    private int keyTransparency;
+    private int cornerRadius;
+    private boolean liquidTouch;
+    private boolean animatedBorder;
+
+    private Bitmap backgroundBitmap;
 
     private Runnable deleteRunnable = new Runnable() {
         @Override
@@ -71,71 +75,264 @@ public class MagicboardService extends InputMethodService {
 
     @Override
     public View onCreateInputView() {
+
+        loadStyleSettings();
+
         buildKeyboard();
+
         return keyboard;
     }
 
     @Override
-    public void onStartInput(android.view.inputmethod.EditorInfo attribute,
-                              boolean restarting) {
+    public void onStartInput(
+            android.view.inputmethod.EditorInfo attribute,
+            boolean restarting
+    ) {
+
         super.onStartInput(attribute, restarting);
+
         sinhalaBuffer = "";
+
+        loadStyleSettings();
     }
 
+    /*
+     * =========================================================
+     * STYLE SETTINGS
+     * =========================================================
+     */
+
+    private void loadStyleSettings() {
+
+        stylePrefs = getSharedPreferences(
+                "MagicboardStyle",
+                MODE_PRIVATE
+        );
+
+        keyboardBackgroundColor =
+                stylePrefs.getInt(
+                        "backgroundColor",
+                        Color.BLACK
+                );
+
+        keyTransparency =
+                stylePrefs.getInt(
+                        "keyTransparency",
+                        100
+                );
+
+        cornerRadius =
+                stylePrefs.getInt(
+                        "cornerRadius",
+                        8
+                );
+
+        liquidTouch =
+                stylePrefs.getBoolean(
+                        "liquidTouch",
+                        true
+                );
+
+        animatedBorder =
+                stylePrefs.getBoolean(
+                        "animatedBorder",
+                        true
+                );
+
+        loadBackgroundImage();
+    }
+
+    private void loadBackgroundImage() {
+
+        backgroundBitmap = null;
+
+        String uriString =
+                stylePrefs.getString(
+                        "backgroundImageUri",
+                        ""
+                );
+
+        if (uriString == null ||
+                uriString.length() == 0) {
+            return;
+        }
+
+        try {
+
+            Uri uri =
+                    Uri.parse(uriString);
+
+            InputStream input =
+                    getContentResolver()
+                            .openInputStream(uri);
+
+            if (input != null) {
+
+                backgroundBitmap =
+                        BitmapFactory.decodeStream(
+                                input
+                        );
+
+                input.close();
+            }
+
+        } catch (Exception ignored) {
+            backgroundBitmap = null;
+        }
+    }
+
+    /*
+     * =========================================================
+     * KEYBOARD
+     * =========================================================
+     */
+
     private void buildKeyboard() {
-        keyboard = new LinearLayout(this);
-        keyboard.setOrientation(LinearLayout.VERTICAL);
-        keyboard.setGravity(Gravity.CENTER);
-        keyboard.setPadding(dp(3), dp(3), dp(3), dp(4));
-        keyboard.setBackgroundColor(Color.BLACK);
-        keyboard.setMinimumHeight(dp(KEYBOARD_CONTENT_HEIGHT + 7));
+
+        keyboard =
+                new LinearLayout(this);
+
+        keyboard.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        keyboard.setGravity(
+                Gravity.CENTER
+        );
+
+        keyboard.setPadding(
+                dp(3),
+                dp(3),
+                dp(3),
+                dp(4)
+        );
+
+        keyboard.setMinimumHeight(
+                dp(KEYBOARD_CONTENT_HEIGHT + 7)
+        );
+
+        applyKeyboardBackground();
 
         if (emojiMode) {
+
             buildEmojiKeyboard();
+
         } else if (numberMode) {
+
             buildNumberKeyboard();
+
         } else if (sinhalaMode) {
+
             buildSinhalaKeyboard();
+
         } else {
+
             buildLetterKeyboard();
         }
     }
 
-    private LinearLayout createRow(int height) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
+    /*
+     * =========================================================
+     * KEYBOARD BACKGROUND
+     * =========================================================
+     */
+
+    private void applyKeyboardBackground() {
+
+        if (backgroundBitmap != null) {
+
+            android.graphics.drawable.BitmapDrawable drawable =
+                    new android.graphics.drawable.BitmapDrawable(
+                            getResources(),
+                            backgroundBitmap
+                    );
+
+            drawable.setGravity(
+                    Gravity.FILL
+            );
+
+            keyboard.setBackground(
+                    drawable
+            );
+
+        } else {
+
+            keyboard.setBackgroundColor(
+                    keyboardBackgroundColor
+            );
+        }
+    }
+
+    /*
+     * =========================================================
+     * ROW
+     * =========================================================
+     */
+
+    private LinearLayout createRow(
+            int height
+    ) {
+
+        LinearLayout row =
+                new LinearLayout(this);
+
+        row.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        row.setGravity(
+                Gravity.CENTER
+        );
+
         row.setLayoutParams(
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         dp(height)
                 )
         );
+
         return row;
     }
 
     /*
-     * English key sizing.
-     * The rows use weights so the keys fit the available width.
+     * =========================================================
+     * KEY CREATION
+     * =========================================================
      */
-    private Button createKey(String text, float weight) {
-        Button button = new Button(this);
+
+    private Button createKey(
+            String text,
+            float weight
+    ) {
+
+        Button button =
+                new Button(this);
 
         button.setText(text);
-        button.setTextColor(Color.WHITE);
+
+        button.setTextColor(
+                Color.WHITE
+        );
+
         button.setTextSize(15);
+
         button.setAllCaps(false);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(0, 0, 0, 0);
+
+        button.setGravity(
+                Gravity.CENTER
+        );
+
+        button.setPadding(
+                0,
+                0,
+                0,
+                0
+        );
+
         button.setMinWidth(0);
         button.setMinHeight(0);
 
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(Color.rgb(24, 24, 24));
-        background.setStroke(dp(1), Color.rgb(0, 255, 100));
-        background.setCornerRadius(dp(8));
-
-        button.setBackground(background);
+        applyKeyStyle(button);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
@@ -153,19 +350,264 @@ public class MagicboardService extends InputMethodService {
 
         button.setLayoutParams(params);
 
+        attachTouchAnimation(button);
+
         return button;
     }
 
-    /* =========================================================
-       ENGLISH KEYBOARD
-       ========================================================= */
+    private void applyKeyStyle(
+            Button button
+    ) {
+
+        int alpha =
+                (int) (
+                        255f *
+                        (keyTransparency / 100f)
+                );
+
+        if (alpha < 0) alpha = 0;
+        if (alpha > 255) alpha = 255;
+
+        int keyColor =
+                Color.argb(
+                        alpha,
+                        24,
+                        24,
+                        24
+                );
+
+        int borderColor =
+                Color.argb(
+                        255,
+                        0,
+                        255,
+                        100
+                );
+
+        GradientDrawable background =
+                new GradientDrawable();
+
+        background.setColor(
+                keyColor
+        );
+
+        background.setStroke(
+                dp(1),
+                borderColor
+        );
+
+        background.setCornerRadius(
+                dp(cornerRadius)
+        );
+
+        button.setBackground(
+                background
+        );
+    }
+
+    /*
+     * =========================================================
+     * LIQUID WATER TOUCH EFFECT
+     * =========================================================
+     */
+
+    private void attachTouchAnimation(
+            Button button
+    ) {
+
+        if (!liquidTouch &&
+                !animatedBorder) {
+            return;
+        }
+
+        button.setOnTouchListener(
+                (v, event) -> {
+
+                    if (event.getAction() ==
+                            MotionEvent.ACTION_DOWN) {
+
+                        if (liquidTouch) {
+
+                            startLiquidTouch(
+                                    button,
+                                    event.getX(),
+                                    event.getY()
+                            );
+                        }
+
+                        if (animatedBorder) {
+
+                            animateBorder(
+                                    button
+                            );
+                        }
+
+                    }
+
+                    return false;
+                }
+        );
+    }
+
+    private void startLiquidTouch(
+            Button button,
+            float x,
+            float y
+    ) {
+
+        final View ripple =
+                new View(this);
+
+        GradientDrawable rippleBackground =
+                new GradientDrawable();
+
+        rippleBackground.setShape(
+                GradientDrawable.OVAL
+        );
+
+        rippleBackground.setColor(
+                Color.argb(
+                        80,
+                        0,
+                        255,
+                        100
+                )
+        );
+
+        ripple.setBackground(
+                rippleBackground
+        );
+
+        ViewGroup parent =
+                (ViewGroup) button;
+
+        parent.addView(
+                ripple,
+                new ViewGroup.LayoutParams(
+                        dp(10),
+                        dp(10)
+                )
+        );
+
+        ripple.setX(
+                x - dp(5)
+        );
+
+        ripple.setY(
+                y - dp(5)
+        );
+
+        ripple.animate()
+                .scaleX(8f)
+                .scaleY(8f)
+                .alpha(0f)
+                .setDuration(420)
+                .withEndAction(
+                        () -> {
+
+                            try {
+                                parent.removeView(
+                                        ripple
+                                );
+                            } catch (Exception ignored) {
+                            }
+                        }
+                )
+                .start();
+    }
+
+    private void animateBorder(
+            Button button
+    ) {
+
+        final GradientDrawable first =
+                createAnimatedBorder(
+                        Color.rgb(
+                                0,
+                                255,
+                                100
+                        )
+                );
+
+        final GradientDrawable bright =
+                createAnimatedBorder(
+                        Color.rgb(
+                                120,
+                                255,
+                                180
+                        )
+                );
+
+        button.setBackground(
+                bright
+        );
+
+        button.animate()
+                .alpha(0.82f)
+                .setDuration(90)
+                .withEndAction(
+                        () -> {
+
+                            button.setBackground(
+                                    first
+                            );
+
+                            button.animate()
+                                    .alpha(1f)
+                                    .setDuration(180)
+                                    .start();
+                        }
+                )
+                .start();
+    }
+
+    private GradientDrawable createAnimatedBorder(
+            int borderColor
+    ) {
+
+        int alpha =
+                (int) (
+                        255f *
+                        (keyTransparency / 100f)
+                );
+
+        GradientDrawable drawable =
+                new GradientDrawable();
+
+        drawable.setColor(
+                Color.argb(
+                        alpha,
+                        24,
+                        24,
+                        24
+                )
+        );
+
+        drawable.setStroke(
+                dp(1),
+                borderColor
+        );
+
+        drawable.setCornerRadius(
+                dp(cornerRadius)
+        );
+
+        return drawable;
+    }
+
+    /*
+     * =========================================================
+     * ENGLISH
+     * =========================================================
+     */
 
     private void buildLetterKeyboard() {
 
         addLetterRow("QWERTYUIOP");
         addLetterRow("ASDFGHJKL");
 
-        LinearLayout row = createRow(60);
+        LinearLayout row =
+                createRow(60);
 
         addShift(row);
 
@@ -184,12 +626,23 @@ public class MagicboardService extends InputMethodService {
         addControlRow();
     }
 
-    private void addLetterRow(String letters) {
+    private void addLetterRow(
+            String letters
+    ) {
 
-        LinearLayout row = createRow(60);
+        LinearLayout row =
+                createRow(60);
 
-        for (int i = 0; i < letters.length(); i++) {
-            addLetterKey(row, String.valueOf(letters.charAt(i)));
+        for (int i = 0;
+             i < letters.length();
+             i++) {
+
+            addLetterKey(
+                    row,
+                    String.valueOf(
+                            letters.charAt(i)
+                    )
+            );
         }
 
         keyboard.addView(row);
@@ -200,13 +653,19 @@ public class MagicboardService extends InputMethodService {
             String letter
     ) {
 
-        boolean uppercase = capsLock || shiftOn;
+        boolean uppercase =
+                capsLock || shiftOn;
 
-        String display = uppercase
-                ? letter.toUpperCase()
-                : letter.toLowerCase();
+        String display =
+                uppercase
+                        ? letter.toUpperCase()
+                        : letter.toLowerCase();
 
-        Button button = createKey(display, 1);
+        Button button =
+                createKey(
+                        display,
+                        1
+                );
 
         button.setOnClickListener(v -> {
 
@@ -223,10 +682,16 @@ public class MagicboardService extends InputMethodService {
                                 ? letter.toUpperCase()
                                 : letter.toLowerCase();
 
-                input.commitText(value, 1);
+                input.commitText(
+                        value,
+                        1
+                );
 
-                if (shiftOn && !capsLock) {
+                if (shiftOn &&
+                        !capsLock) {
+
                     shiftOn = false;
+
                     refreshKeyboard();
                 }
             }
@@ -235,24 +700,24 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    /* =========================================================
-       PHONETIC SINHALA KEYBOARD
-       ========================================================= */
+    /*
+     * =========================================================
+     * SINHALA PHONETIC
+     * =========================================================
+     */
 
     private void buildSinhalaKeyboard() {
 
-        /*
-         * Sinhala mode intentionally keeps the familiar
-         * QWERTY-style layout.
-         *
-         * The user types Roman/English phonetic letters and
-         * Magicboard converts them to Sinhala.
-         */
+        addSinhalaPhoneticRow(
+                "QWERTYUIOP"
+        );
 
-        addSinhalaPhoneticRow("QWERTYUIOP");
-        addSinhalaPhoneticRow("ASDFGHJKL");
+        addSinhalaPhoneticRow(
+                "ASDFGHJKL"
+        );
 
-        LinearLayout row = createRow(60);
+        LinearLayout row =
+                createRow(60);
 
         addSinhalaShift(row);
 
@@ -271,15 +736,22 @@ public class MagicboardService extends InputMethodService {
         addSinhalaPhoneticControlRow();
     }
 
-    private void addSinhalaPhoneticRow(String letters) {
+    private void addSinhalaPhoneticRow(
+            String letters
+    ) {
 
-        LinearLayout row = createRow(60);
+        LinearLayout row =
+                createRow(60);
 
-        for (int i = 0; i < letters.length(); i++) {
+        for (int i = 0;
+             i < letters.length();
+             i++) {
 
             addSinhalaPhoneticKey(
                     row,
-                    String.valueOf(letters.charAt(i))
+                    String.valueOf(
+                            letters.charAt(i)
+                    )
             );
         }
 
@@ -300,19 +772,22 @@ public class MagicboardService extends InputMethodService {
                         : letter.toLowerCase();
 
         Button button =
-                createKey(display, 1);
+                createKey(
+                        display,
+                        1
+                );
 
         button.setOnClickListener(v -> {
 
-            String value =
-                    upper
-                            ? letter.toUpperCase()
-                            : letter.toLowerCase();
+            commitSinhalaPhonetic(
+                    display
+            );
 
-            commitSinhalaPhonetic(value);
+            if (shiftOn &&
+                    !capsLock) {
 
-            if (shiftOn && !capsLock) {
                 shiftOn = false;
+
                 refreshKeyboard();
             }
         });
@@ -324,13 +799,16 @@ public class MagicboardService extends InputMethodService {
             LinearLayout row
     ) {
 
-        String shiftText =
+        String text =
                 capsLock
                         ? "⇧"
                         : (shiftOn ? "↑" : "⇧");
 
         Button button =
-                createKey(shiftText, 1.35f);
+                createKey(
+                        text,
+                        1.35f
+                );
 
         button.setOnClickListener(v -> {
 
@@ -344,15 +822,19 @@ public class MagicboardService extends InputMethodService {
                 lastShiftTap = 0;
 
                 refreshKeyboard();
+
                 return;
             }
 
             lastShiftTap = now;
 
             if (capsLock) {
+
                 capsLock = false;
                 shiftOn = false;
+
             } else {
+
                 shiftOn = !shiftOn;
             }
 
@@ -367,7 +849,10 @@ public class MagicboardService extends InputMethodService {
     ) {
 
         Button button =
-                createKey("⌫", 1.35f);
+                createKey(
+                        "⌫",
+                        1.35f
+                );
 
         button.setOnTouchListener(
                 (v, event) -> {
@@ -410,19 +895,34 @@ public class MagicboardService extends InputMethodService {
                 createRow(60);
 
         Button numbers =
-                createKey("123", 1.25f);
+                createKey(
+                        "123",
+                        1.25f
+                );
 
         Button emoji =
-                createKey("😊", 1.0f);
+                createKey(
+                        "😊",
+                        1.0f
+                );
 
         Button english =
-                createKey("ABC", 1.25f);
+                createKey(
+                        "ABC",
+                        1.25f
+                );
 
         Button space =
-                createKey("SPACE", 3.3f);
+                createKey(
+                        "SPACE",
+                        3.3f
+                );
 
         Button enter =
-                createKey("↵", 1.35f);
+                createKey(
+                        "↵",
+                        1.35f
+                );
 
         numbers.setOnClickListener(v -> {
 
@@ -465,7 +965,10 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-                input.commitText(" ", 1);
+                input.commitText(
+                        " ",
+                        1
+                );
             }
         });
 
@@ -473,18 +976,7 @@ public class MagicboardService extends InputMethodService {
 
             finishSinhalaComposition();
 
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         row.addView(numbers);
@@ -497,8 +989,11 @@ public class MagicboardService extends InputMethodService {
     }
 
     /*
-     * Main phonetic input function.
+     * =========================================================
+     * PHONETIC ENGINE
+     * =========================================================
      */
+
     private void commitSinhalaPhonetic(
             String roman
     ) {
@@ -506,27 +1001,24 @@ public class MagicboardService extends InputMethodService {
         InputConnection input =
                 getCurrentInputConnection();
 
-        if (input == null) return;
+        if (input == null) {
+            return;
+        }
 
-        sinhalaBuffer += roman.toLowerCase();
+        sinhalaBuffer +=
+                roman.toLowerCase();
 
         String converted =
                 phoneticToSinhala(
                         sinhalaBuffer
                 );
 
-        if (converted.length() > 0) {
-
-            input.setComposingText(
-                    converted,
-                    1
-            );
-        }
+        input.setComposingText(
+                converted,
+                1
+        );
     }
 
-    /*
-     * Convert common Roman phonetic Sinhala patterns.
-     */
     private String phoneticToSinhala(
             String text
     ) {
@@ -534,46 +1026,27 @@ public class MagicboardService extends InputMethodService {
         String value =
                 text.toLowerCase();
 
-        /*
-         * Common complete-word patterns.
-         * These make normal Sinhala typing much
-         * more natural for common words.
-         */
         String[][] words = {
 
                 {"mama", "මම"},
                 {"api", "අපි"},
-                {"apii", "අපි"},
-                {"oya", "ඔයා"},
                 {"oyaa", "ඔයා"},
-                {"oyata", "ඔයාට"},
+                {"oya", "ඔයා"},
                 {"mage", "මගේ"},
-                {"magee", "මගේ"},
                 {"mata", "මට"},
-                {"matai", "මටයි"},
-                {"man", "මං"},
-                {"mama", "මම"},
                 {"hari", "හරි"},
-                {"hariii", "හරි"},
                 {"eka", "එක"},
-                {"ekaata", "එකට"},
-                {"eka", "එක"},
-                {"me", "මේ"},
                 {"mee", "මේ"},
-                {"e", "එ"},
-                {"ae", "ඇ"},
-                {"aee", "ඈ"},
+                {"me", "මේ"},
                 {"aa", "ආ"},
                 {"ii", "ඊ"},
                 {"uu", "ඌ"},
                 {"ee", "ඒ"},
                 {"oo", "ඕ"},
-                {"kawda", "කවුද"},
                 {"kauda", "කවුද"},
+                {"kawda", "කවුද"},
                 {"kohomada", "කොහොමද"},
-                {"kohomadha", "කොහොමද"},
                 {"mokakda", "මොකක්ද"},
-                {"mokakdha", "මොකක්ද"},
                 {"mokada", "මොකද"},
                 {"dan", "දැන්"},
                 {"deng", "දැන්"},
@@ -586,16 +1059,12 @@ public class MagicboardService extends InputMethodService {
                 {"ona", "ඕන"},
                 {"one", "ඕනේ"},
                 {"thiyenawa", "තියෙනවා"},
-                {"thiyenavada", "තියෙනවද"},
                 {"nathi", "නැති"},
                 {"naha", "නෑ"},
                 {"ne", "නේ"},
-                {"na", "න"},
                 {"hariyata", "හරියට"},
                 {"supiri", "සුපිරි"},
-                {"godak", "ගොඩක්"},
-                {"lassanai", "ලස්සනයි"},
-                {"thanks", "තෑන්ක්ස්"}
+                {"godak", "ගොඩක්"}
         };
 
         for (String[] pair : words) {
@@ -608,9 +1077,6 @@ public class MagicboardService extends InputMethodService {
         return convertSyllables(value);
     }
 
-    /*
-     * Basic Sinhala phonetic syllable converter.
-     */
     private String convertSyllables(
             String text
     ) {
@@ -626,9 +1092,12 @@ public class MagicboardService extends InputMethodService {
 
         while (i < text.length()) {
 
-            /*
-             * Long vowels.
-             */
+            if (startsWith(text, i, "aee")) {
+                result.append("ඈ");
+                i += 3;
+                continue;
+            }
+
             if (startsWith(text, i, "aa")) {
                 result.append("ආ");
                 i += 2;
@@ -638,12 +1107,6 @@ public class MagicboardService extends InputMethodService {
             if (startsWith(text, i, "ae")) {
                 result.append("ඇ");
                 i += 2;
-                continue;
-            }
-
-            if (startsWith(text, i, "aee")) {
-                result.append("ඈ");
-                i += 3;
                 continue;
             }
 
@@ -671,9 +1134,6 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            /*
-             * Aspirated consonants.
-             */
             if (startsWith(text, i, "kh")) {
                 result.append("ඛ");
                 i += 2;
@@ -688,18 +1148,6 @@ public class MagicboardService extends InputMethodService {
 
             if (startsWith(text, i, "ch")) {
                 result.append("ච");
-                i += 2;
-                continue;
-            }
-
-            if (startsWith(text, i, "jh")) {
-                result.append("ඣ");
-                i += 2;
-                continue;
-            }
-
-            if (startsWith(text, i, "th")) {
-                result.append("ත");
                 i += 2;
                 continue;
             }
@@ -722,9 +1170,6 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            /*
-             * Common special phonetic combinations.
-             */
             if (startsWith(text, i, "sh")) {
                 result.append("ශ");
                 i += 2;
@@ -743,30 +1188,16 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            if (startsWith(text, i, "tr")) {
-                result.append("ත්‍ර");
-                i += 2;
-                continue;
-            }
-
-            /*
-             * Single consonants.
-             */
-            char c = text.charAt(i);
+            char c =
+                    text.charAt(i);
 
             String consonant =
                     consonantFor(c);
 
             if (consonant != null) {
 
-                /*
-                 * Look ahead for a vowel.
-                 */
-                String vowel =
-                        "";
-
-                int consumed =
-                        1;
+                String vowel = "";
+                int consumed = 1;
 
                 if (i + 2 <= text.length()) {
 
@@ -782,18 +1213,23 @@ public class MagicboardService extends InputMethodService {
                     if (two.equals("aa")) {
                         vowel = "ා";
                         consumed = 2;
+
                     } else if (two.equals("ae")) {
                         vowel = "ැ";
                         consumed = 2;
+
                     } else if (two.equals("ii")) {
                         vowel = "ී";
                         consumed = 2;
+
                     } else if (two.equals("uu")) {
                         vowel = "ූ";
                         consumed = 2;
+
                     } else if (two.equals("ee")) {
                         vowel = "ේ";
                         consumed = 2;
+
                     } else if (two.equals("oo")) {
                         vowel = "ෝ";
                         consumed = 2;
@@ -809,15 +1245,19 @@ public class MagicboardService extends InputMethodService {
                     if (next == 'i') {
                         vowel = "ි";
                         consumed = 2;
+
                     } else if (next == 'u') {
                         vowel = "ු";
                         consumed = 2;
+
                     } else if (next == 'e') {
                         vowel = "ෙ";
                         consumed = 2;
+
                     } else if (next == 'o') {
                         vowel = "ො";
                         consumed = 2;
+
                     } else if (next == 'a') {
                         vowel = "";
                         consumed = 2;
@@ -828,24 +1268,21 @@ public class MagicboardService extends InputMethodService {
                 result.append(vowel);
 
                 i += consumed;
+
                 continue;
             }
 
-            /*
-             * Standalone vowels.
-             */
             String vowel =
                     vowelFor(c);
 
             if (vowel != null) {
+
                 result.append(vowel);
                 i++;
+
                 continue;
             }
 
-            /*
-             * Digits / punctuation / unknown characters.
-             */
             result.append(c);
             i++;
         }
@@ -924,9 +1361,6 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
-    /*
-     * Finish current Sinhala composition.
-     */
     private void finishSinhalaComposition() {
 
         InputConnection input =
@@ -935,13 +1369,10 @@ public class MagicboardService extends InputMethodService {
         if (input != null &&
                 sinhalaBuffer.length() > 0) {
 
-            String value =
+            input.commitText(
                     phoneticToSinhala(
                             sinhalaBuffer
-                    );
-
-            input.commitText(
-                    value,
+                    ),
                     1
             );
         }
@@ -949,11 +1380,6 @@ public class MagicboardService extends InputMethodService {
         sinhalaBuffer = "";
     }
 
-    /*
-     * Sinhala backspace:
-     * first removes composing Roman input,
-     * otherwise removes text from the editor.
-     */
     private void deleteSinhalaCharacter() {
 
         if (sinhalaBuffer.length() > 0) {
@@ -991,21 +1417,21 @@ public class MagicboardService extends InputMethodService {
     }
 
     /* =========================================================
-       ENGLISH SHIFT
+       SHIFT
        ========================================================= */
 
     private void addShift(
             LinearLayout row
     ) {
 
-        String shiftText =
+        String text =
                 capsLock
                         ? "⇧"
                         : (shiftOn ? "↑" : "⇧");
 
         Button button =
                 createKey(
-                        shiftText,
+                        text,
                         1.35f
                 );
 
@@ -1021,6 +1447,7 @@ public class MagicboardService extends InputMethodService {
                 lastShiftTap = 0;
 
                 refreshKeyboard();
+
                 return;
             }
 
@@ -1043,7 +1470,7 @@ public class MagicboardService extends InputMethodService {
     }
 
     /* =========================================================
-       NORMAL BACKSPACE
+       BACKSPACE
        ========================================================= */
 
     private void addBackspace(
@@ -1051,7 +1478,10 @@ public class MagicboardService extends InputMethodService {
     ) {
 
         Button button =
-                createKey("⌫", 1.35f);
+                createKey(
+                        "⌫",
+                        1.35f
+                );
 
         button.setOnTouchListener(
                 (v, event) -> {
@@ -1088,18 +1518,8 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    private void deleteOne() {
-
-        InputConnection input =
-                getCurrentInputConnection();
-
-        if (input != null) {
-            input.deleteSurroundingText(1, 0);
-        }
-    }
-
     /* =========================================================
-       ENGLISH CONTROL ROW
+       CONTROL ROW
        ========================================================= */
 
     private void addControlRow() {
@@ -1108,19 +1528,34 @@ public class MagicboardService extends InputMethodService {
                 createRow(60);
 
         Button numbers =
-                createKey("123", 1.25f);
+                createKey(
+                        "123",
+                        1.25f
+                );
 
         Button emoji =
-                createKey("😊", 1.0f);
+                createKey(
+                        "😊",
+                        1.0f
+                );
 
         Button sinhala =
-                createKey("සිං", 1.25f);
+                createKey(
+                        "සිං",
+                        1.25f
+                );
 
         Button space =
-                createKey("SPACE", 3.3f);
+                createKey(
+                        "SPACE",
+                        3.3f
+                );
 
         Button enter =
-                createKey("↵", 1.35f);
+                createKey(
+                        "↵",
+                        1.35f
+                );
 
         numbers.setOnClickListener(v -> {
 
@@ -1158,24 +1593,16 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-                input.commitText(" ", 1);
+                input.commitText(
+                        " ",
+                        1
+                );
             }
         });
 
         enter.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         row.addView(numbers);
@@ -1187,8 +1614,24 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
+    private void sendEnter() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input != null) {
+
+            input.sendKeyEvent(
+                    new android.view.KeyEvent(
+                            android.view.KeyEvent.ACTION_DOWN,
+                            android.view.KeyEvent.KEYCODE_ENTER
+                    )
+            );
+        }
+    }
+
     /* =========================================================
-       NUMBER KEYBOARD
+       NUMBERS
        ========================================================= */
 
     private void buildNumberKeyboard() {
@@ -1201,7 +1644,9 @@ public class MagicboardService extends InputMethodService {
 
         Button abc =
                 createKey(
-                        sinhalaMode ? "සිං" : "ABC",
+                        sinhalaMode
+                                ? "සිං"
+                                : "ABC",
                         1.35f
                 );
 
@@ -1231,13 +1676,22 @@ public class MagicboardService extends InputMethodService {
                 createRow(60);
 
         Button emoji =
-                createKey("😊", 1.0f);
+                createKey(
+                        "😊",
+                        1.0f
+                );
 
         Button space =
-                createKey("SPACE", 4.3f);
+                createKey(
+                        "SPACE",
+                        4.3f
+                );
 
         Button enter =
-                createKey("↵", 1.5f);
+                createKey(
+                        "↵",
+                        1.5f
+                );
 
         emoji.setOnClickListener(v -> {
 
@@ -1253,24 +1707,16 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-                input.commitText(" ", 1);
+                input.commitText(
+                        " ",
+                        1
+                );
             }
         });
 
         enter.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         bottom.addView(emoji);
@@ -1308,7 +1754,10 @@ public class MagicboardService extends InputMethodService {
     ) {
 
         Button button =
-                createKey(value, 1);
+                createKey(
+                        value,
+                        1
+                );
 
         button.setOnClickListener(v -> {
 
@@ -1316,7 +1765,10 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-                input.commitText(value, 1);
+                input.commitText(
+                        value,
+                        1
+                );
             }
         });
 
@@ -1332,7 +1784,10 @@ public class MagicboardService extends InputMethodService {
         HorizontalScrollView categoryScroll =
                 new HorizontalScrollView(this);
 
-        categoryScroll.setHorizontalScrollBarEnabled(false);
+        categoryScroll.setHorizontalScrollBarEnabled(
+                false
+        );
+
         categoryScroll.setOverScrollMode(
                 View.OVER_SCROLL_NEVER
         );
@@ -1348,7 +1803,9 @@ public class MagicboardService extends InputMethodService {
                 Gravity.CENTER_VERTICAL
         );
 
-        categoryScroll.addView(categoryBar);
+        categoryScroll.addView(
+                categoryBar
+        );
 
         addCategoryButton(
                 categoryBar,
@@ -1409,11 +1866,12 @@ public class MagicboardService extends InputMethodService {
         ScrollView emojiScroll =
                 new ScrollView(this);
 
-        emojiScroll.setVerticalScrollBarEnabled(true);
-        emojiScroll.setHorizontalScrollBarEnabled(false);
+        emojiScroll.setVerticalScrollBarEnabled(
+                true
+        );
 
-        emojiScroll.setOverScrollMode(
-                View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        emojiScroll.setHorizontalScrollBarEnabled(
+                false
         );
 
         LinearLayout emojiArea =
@@ -1449,7 +1907,9 @@ public class MagicboardService extends InputMethodService {
         );
 
         LinearLayout bottom =
-                createRow(EMOJI_BOTTOM_HEIGHT);
+                createRow(
+                        EMOJI_BOTTOM_HEIGHT
+                );
 
         Button abc =
                 createKey(
@@ -1460,13 +1920,22 @@ public class MagicboardService extends InputMethodService {
                 );
 
         Button numbers =
-                createKey("123", 1.15f);
+                createKey(
+                        "123",
+                        1.15f
+                );
 
         Button space =
-                createKey("SPACE", 3.9f);
+                createKey(
+                        "SPACE",
+                        3.9f
+                );
 
         Button back =
-                createKey("⌫", 1.4f);
+                createKey(
+                        "⌫",
+                        1.4f
+                );
 
         abc.setOnClickListener(v -> {
 
@@ -1490,7 +1959,10 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-                input.commitText(" ", 1);
+                input.commitText(
+                        " ",
+                        1
+                );
             }
         });
 
@@ -1541,7 +2013,10 @@ public class MagicboardService extends InputMethodService {
     ) {
 
         Button button =
-                createKey(icon, 1);
+                createKey(
+                        icon,
+                        1
+                );
 
         button.setTextSize(19);
 
@@ -1587,7 +2062,10 @@ public class MagicboardService extends InputMethodService {
                     emojis
             );
 
-            scroll.scrollTo(0, 0);
+            scroll.scrollTo(
+                    0,
+                    0
+            );
         });
 
         bar.addView(button);
@@ -1639,7 +2117,10 @@ public class MagicboardService extends InputMethodService {
                         emojis[index];
 
                 Button emoji =
-                        createKey(value, 1);
+                        createKey(
+                                value,
+                                1
+                        );
 
                 emoji.setTextSize(20);
 
@@ -1738,7 +2219,11 @@ public class MagicboardService extends InputMethodService {
 
     private void refreshKeyboard() {
 
+        loadStyleSettings();
+
         keyboard.removeAllViews();
+
+        applyKeyboardBackground();
 
         if (emojiMode) {
 
