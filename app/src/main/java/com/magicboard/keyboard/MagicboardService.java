@@ -20,6 +20,7 @@ import android.graphics.BitmapFactory;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.text.BreakIterator;
 
 public class MagicboardService extends InputMethodService {
 
@@ -61,18 +62,7 @@ public class MagicboardService extends InputMethodService {
 
             if (input != null) {
 
-                if (sinhalaMode &&
-                        sinhalaBuffer.length() > 0) {
-
-                    deleteSinhalaCharacter();
-
-                } else {
-
-                    input.deleteSurroundingText(
-                            1,
-                            0
-                    );
-                }
+                deleteAtCursor();
 
                 deleteHandler.postDelayed(
                         this,
@@ -1305,12 +1295,6 @@ public class MagicboardService extends InputMethodService {
         String value =
                 text.toLowerCase();
 
-        /*
-         * First check complete words.
-         * This allows common Sinhala words to be
-         * rendered naturally instead of being forced
-         * through a generic syllable parser.
-         */
         String dictionaryResult =
                 dictionaryLookup(value);
 
@@ -1385,9 +1369,6 @@ public class MagicboardService extends InputMethodService {
         words.put("hondai", "හොඳයි");
         words.put("honda", "හොඳ");
 
-        words.put("mata", "මට");
-        words.put("mama", "මම");
-
         words.put("oyaage", "ඔයාගේ");
         words.put("oyata", "ඔයාට");
 
@@ -1398,8 +1379,6 @@ public class MagicboardService extends InputMethodService {
         words.put("karapu", "කරපු");
 
         words.put("karan", "කරන්");
-        words.put("karanna", "කරන්න");
-
         words.put("kiyanna", "කියන්න");
         words.put("kiyanawa", "කියනවා");
         words.put("kiyala", "කියලා");
@@ -1423,8 +1402,6 @@ public class MagicboardService extends InputMethodService {
         words.put("mokak", "මොකක්");
         words.put("mokadda", "මොකද්ද");
 
-        words.put("kawda", "කවුද");
-        words.put("koheda", "කොහෙද");
         words.put("koheda", "කොහෙද");
 
         words.put("aeththada", "ඇත්තද");
@@ -1436,28 +1413,8 @@ public class MagicboardService extends InputMethodService {
         words.put("na", "නා");
         words.put("naa", "නා");
 
-        words.put("hari", "හරි");
-        words.put("supiri", "සුපිරි");
-
         return words.get(value);
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Base consonants
-     *
-     * Important:
-     *
-     * k  + a  = ක
-     * k       = ක්
-     *
-     * dha + a = ද
-     * dh      = ද්
-     *
-     * Therefore a consonant without a vowel gets
-     * the Sinhala virama/hal-kirima.
-     * ------------------------------------------------------------
-     */
 
     private String getConsonant(
             String code
@@ -1469,14 +1426,7 @@ public class MagicboardService extends InputMethodService {
         if (code.equals("ch")) return "ච";
         if (code.equals("jh")) return "ඣ";
 
-        /*
-         * dha = ද
-         */
         if (code.equals("dh")) return "ද";
-
-        /*
-         * tha = ත
-         */
         if (code.equals("th")) return "ත";
 
         if (code.equals("ph")) return "ෆ";
@@ -1516,12 +1466,6 @@ public class MagicboardService extends InputMethodService {
         return null;
     }
 
-    /*
-     * ------------------------------------------------------------
-     * Retroflex / special consonant forms
-     * ------------------------------------------------------------
-     */
-
     private String getSpecialConsonant(
             String code
     ) {
@@ -1530,7 +1474,6 @@ public class MagicboardService extends InputMethodService {
         if (code.equals("gn")) return "ඥ";
 
         if (code.equals("nya")) return "ඤ";
-
         if (code.equals("ny")) return "ඤ";
 
         if (code.equals("nda")) return "ඳ";
@@ -1544,12 +1487,6 @@ public class MagicboardService extends InputMethodService {
 
         return null;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Independent Sinhala vowels
-     * ------------------------------------------------------------
-     */
 
     private String getIndependentVowel(
             String code
@@ -1578,103 +1515,27 @@ public class MagicboardService extends InputMethodService {
         return null;
     }
 
-    /*
-     * ------------------------------------------------------------
-     * Sinhala vowel signs
-     *
-     * a   = inherent vowel
-     * aa  = ා
-     * ae  = ැ
-     * aee = ෑ
-     * i   = ි
-     * ii  = ී
-     * u   = ු
-     * uu  = ූ
-     * e   = ෙ
-     * ee  = ේ
-     * o   = ො
-     * oo  = ෝ
-     * ai  = ෛ
-     * au  = ෞ
-     * ------------------------------------------------------------
-     */
-
     private String getVowelSign(
             String vowel
     ) {
 
-        if (vowel.equals("a")) {
-            return "";
-        }
-
-        if (vowel.equals("aa")) {
-            return "ා";
-        }
-
-        if (vowel.equals("ae")) {
-            return "ැ";
-        }
-
-        if (vowel.equals("aee")) {
-            return "ෑ";
-        }
-
-        if (vowel.equals("i")) {
-            return "ි";
-        }
-
-        if (vowel.equals("ii")) {
-            return "ී";
-        }
-
-        if (vowel.equals("u")) {
-            return "ු";
-        }
-
-        if (vowel.equals("uu")) {
-            return "ූ";
-        }
-
-        if (vowel.equals("e")) {
-            return "ෙ";
-        }
-
-        if (vowel.equals("ee")) {
-            return "ේ";
-        }
-
-        if (vowel.equals("o")) {
-            return "ො";
-        }
-
-        if (vowel.equals("oo")) {
-            return "ෝ";
-        }
-
-        if (vowel.equals("ai")) {
-            return "ෛ";
-        }
-
-        if (vowel.equals("au")) {
-            return "ෞ";
-        }
+        if (vowel.equals("a")) return "";
+        if (vowel.equals("aa")) return "ා";
+        if (vowel.equals("ae")) return "ැ";
+        if (vowel.equals("aee")) return "ෑ";
+        if (vowel.equals("i")) return "ි";
+        if (vowel.equals("ii")) return "ී";
+        if (vowel.equals("u")) return "ු";
+        if (vowel.equals("uu")) return "ූ";
+        if (vowel.equals("e")) return "ෙ";
+        if (vowel.equals("ee")) return "ේ";
+        if (vowel.equals("o")) return "ො";
+        if (vowel.equals("oo")) return "ෝ";
+        if (vowel.equals("ai")) return "ෛ";
+        if (vowel.equals("au")) return "ෞ";
 
         return null;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Cluster bases
-     *
-     * These are checked before normal consonants so:
-     *
-     * kr + a  -> ක්‍ර
-     * pr + a  -> ප්‍ර
-     * tr + a  -> ත්‍ර
-     * dr + a  -> ද්‍ර
-     *
-     * ------------------------------------------------------------
-     */
 
     private String getClusterBase(
             String code
@@ -1708,12 +1569,6 @@ public class MagicboardService extends InputMethodService {
         return null;
     }
 
-    /*
-     * ------------------------------------------------------------
-     * Longest-match syllable parser
-     * ------------------------------------------------------------
-     */
-
     private String parseSinhalaPhonetic(
             String text
     ) {
@@ -1725,12 +1580,6 @@ public class MagicboardService extends InputMethodService {
 
         while (position <
                 text.length()) {
-
-            /*
-             * --------------------------------------------
-             * Explicit special sequences
-             * --------------------------------------------
-             */
 
             String special =
                     findSpecialSequence(
@@ -1753,12 +1602,6 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            /*
-             * --------------------------------------------
-             * Special Sinhala symbols
-             * --------------------------------------------
-             */
-
             if (startsWith(
                     text,
                     position,
@@ -1771,12 +1614,6 @@ public class MagicboardService extends InputMethodService {
 
                 continue;
             }
-
-            /*
-             * --------------------------------------------
-             * Independent vowels
-             * --------------------------------------------
-             */
 
             String independent =
                     findIndependentVowel(
@@ -1798,12 +1635,6 @@ public class MagicboardService extends InputMethodService {
 
                 continue;
             }
-
-            /*
-             * --------------------------------------------
-             * Cluster + vowel
-             * --------------------------------------------
-             */
 
             String clusterCode =
                     findClusterCode(
@@ -1859,12 +1690,6 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            /*
-             * --------------------------------------------
-             * Normal consonant + vowel
-             * --------------------------------------------
-             */
-
             String consonantCode =
                     findConsonantCode(
                             text,
@@ -1906,14 +1731,6 @@ public class MagicboardService extends InputMethodService {
 
                 } else {
 
-                    /*
-                     * No vowel means hal-kirima.
-                     *
-                     * k  -> ක්
-                     * d  -> ඩ්
-                     * dh -> ද්
-                     * th -> ත්
-                     */
                     result.append(
                             addHalKirima(
                                     consonant
@@ -1927,12 +1744,6 @@ public class MagicboardService extends InputMethodService {
                 continue;
             }
 
-            /*
-             * --------------------------------------------
-             * Unknown character
-             * --------------------------------------------
-             */
-
             result.append(
                     text.charAt(position)
             );
@@ -1942,12 +1753,6 @@ public class MagicboardService extends InputMethodService {
 
         return result.toString();
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Special complete sequences
-     * ------------------------------------------------------------
-     */
 
     private String findSpecialSequence(
             String text,
@@ -1959,9 +1764,9 @@ public class MagicboardService extends InputMethodService {
                 "shree",
                 "shri",
 
-                "kshaa",
-                "kshae",
                 "kshaee",
+                "kshae",
+                "kshaa",
                 "kshii",
                 "kshuu",
                 "kshee",
@@ -1972,9 +1777,9 @@ public class MagicboardService extends InputMethodService {
                 "ksho",
                 "ksha",
 
-                "thraa",
-                "thrae",
                 "thraee",
+                "thrae",
+                "thraa",
                 "thrii",
                 "thruu",
                 "three",
@@ -1985,9 +1790,9 @@ public class MagicboardService extends InputMethodService {
                 "thro",
                 "thra",
 
-                "dhraa",
-                "dhrae",
                 "dhraee",
+                "dhrae",
+                "dhraa",
                 "dhrii",
                 "dhruu",
                 "dhree",
@@ -2026,157 +1831,47 @@ public class MagicboardService extends InputMethodService {
             String input
     ) {
 
-        if (input.equals("shree")) {
-            return "ශ්‍රී";
-        }
+        if (input.equals("shree")) return "ශ්‍රී";
+        if (input.equals("shri")) return "ශ්‍රි";
 
-        if (input.equals("shri")) {
-            return "ශ්‍රි";
-        }
+        if (input.equals("kshaa")) return "ක්ෂා";
+        if (input.equals("kshae")) return "ක්ෂැ";
+        if (input.equals("kshaee")) return "ක්ෂෑ";
+        if (input.equals("kshi")) return "ක්ෂි";
+        if (input.equals("kshii")) return "ක්ෂී";
+        if (input.equals("kshu")) return "ක්ෂු";
+        if (input.equals("kshuu")) return "ක්ෂූ";
+        if (input.equals("kshe")) return "ක්ෂෙ";
+        if (input.equals("kshee")) return "ක්ෂේ";
+        if (input.equals("ksho")) return "ක්ෂො";
+        if (input.equals("kshoo")) return "ක්ෂෝ";
+        if (input.equals("ksha")) return "ක්ෂ";
 
-        if (input.equals("kshaa")) {
-            return "ක්ෂා";
-        }
+        if (input.equals("thraa")) return "ත්‍රා";
+        if (input.equals("thrae")) return "ත්‍රැ";
+        if (input.equals("thraee")) return "ත්‍රෑ";
+        if (input.equals("thri")) return "ත්‍රි";
+        if (input.equals("thrii")) return "ත්‍රී";
+        if (input.equals("thru")) return "ත්‍රු";
+        if (input.equals("thruu")) return "ත්‍රූ";
+        if (input.equals("thre")) return "ත්‍රෙ";
+        if (input.equals("three")) return "ත්‍රේ";
+        if (input.equals("thro")) return "ත්‍රො";
+        if (input.equals("throo")) return "ත්‍රෝ";
+        if (input.equals("thra")) return "ත්‍ර";
 
-        if (input.equals("kshae")) {
-            return "ක්ෂැ";
-        }
-
-        if (input.equals("kshaee")) {
-            return "ක්ෂෑ";
-        }
-
-        if (input.equals("kshi")) {
-            return "ක්ෂි";
-        }
-
-        if (input.equals("kshii")) {
-            return "ක්ෂී";
-        }
-
-        if (input.equals("kshu")) {
-            return "ක්ෂු";
-        }
-
-        if (input.equals("kshuu")) {
-            return "ක්ෂූ";
-        }
-
-        if (input.equals("kshe")) {
-            return "ක්ෂෙ";
-        }
-
-        if (input.equals("kshee")) {
-            return "ක්ෂේ";
-        }
-
-        if (input.equals("ksho")) {
-            return "ක්ෂො";
-        }
-
-        if (input.equals("kshoo")) {
-            return "ක්ෂෝ";
-        }
-
-        if (input.equals("ksha")) {
-            return "ක්ෂ";
-        }
-
-        if (input.equals("thraa")) {
-            return "ත්‍රා";
-        }
-
-        if (input.equals("thrae")) {
-            return "ත්‍රැ";
-        }
-
-        if (input.equals("thraee")) {
-            return "ත්‍රෑ";
-        }
-
-        if (input.equals("thri")) {
-            return "ත්‍රි";
-        }
-
-        if (input.equals("thrii")) {
-            return "ත්‍රී";
-        }
-
-        if (input.equals("thru")) {
-            return "ත්‍රු";
-        }
-
-        if (input.equals("thruu")) {
-            return "ත්‍රූ";
-        }
-
-        if (input.equals("thre")) {
-            return "ත්‍රෙ";
-        }
-
-        if (input.equals("three")) {
-            return "ත්‍රේ";
-        }
-
-        if (input.equals("thro")) {
-            return "ත්‍රො";
-        }
-
-        if (input.equals("throo")) {
-            return "ත්‍රෝ";
-        }
-
-        if (input.equals("thra")) {
-            return "ත්‍ර";
-        }
-
-        if (input.equals("dhraa")) {
-            return "ද්‍රා";
-        }
-
-        if (input.equals("dhrae")) {
-            return "ද්‍රැ";
-        }
-
-        if (input.equals("dhraee")) {
-            return "ද්‍රෑ";
-        }
-
-        if (input.equals("dhri")) {
-            return "ද්‍රි";
-        }
-
-        if (input.equals("dhrii")) {
-            return "ද්‍රී";
-        }
-
-        if (input.equals("dhru")) {
-            return "ද්‍රු";
-        }
-
-        if (input.equals("dhruu")) {
-            return "ද්‍රූ";
-        }
-
-        if (input.equals("dhre")) {
-            return "ද්‍රෙ";
-        }
-
-        if (input.equals("dhree")) {
-            return "ද්‍රේ";
-        }
-
-        if (input.equals("dhro")) {
-            return "ද්‍රො";
-        }
-
-        if (input.equals("dhroo")) {
-            return "ද්‍රෝ";
-        }
-
-        if (input.equals("dhra")) {
-            return "ද්‍ර";
-        }
+        if (input.equals("dhraa")) return "ද්‍රා";
+        if (input.equals("dhrae")) return "ද්‍රැ";
+        if (input.equals("dhraee")) return "ද්‍රෑ";
+        if (input.equals("dhri")) return "ද්‍රි";
+        if (input.equals("dhrii")) return "ද්‍රී";
+        if (input.equals("dhru")) return "ද්‍රු";
+        if (input.equals("dhruu")) return "ද්‍රූ";
+        if (input.equals("dhre")) return "ද්‍රෙ";
+        if (input.equals("dhree")) return "ද්‍රේ";
+        if (input.equals("dhro")) return "ද්‍රො";
+        if (input.equals("dhroo")) return "ද්‍රෝ";
+        if (input.equals("dhra")) return "ද්‍ර";
 
         return null;
     }
@@ -2188,9 +1883,9 @@ public class MagicboardService extends InputMethodService {
 
         String[] inputs = {
 
-                "kshaa",
-                "kshae",
                 "kshaee",
+                "kshae",
+                "kshaa",
                 "kshii",
                 "kshuu",
                 "kshee",
@@ -2201,9 +1896,9 @@ public class MagicboardService extends InputMethodService {
                 "ksho",
                 "ksha",
 
-                "thraa",
-                "thrae",
                 "thraee",
+                "thrae",
+                "thraa",
                 "thrii",
                 "thruu",
                 "three",
@@ -2214,9 +1909,9 @@ public class MagicboardService extends InputMethodService {
                 "thro",
                 "thra",
 
-                "dhraa",
-                "dhrae",
                 "dhraee",
+                "dhrae",
+                "dhraa",
                 "dhrii",
                 "dhruu",
                 "dhree",
@@ -2250,12 +1945,6 @@ public class MagicboardService extends InputMethodService {
 
         return 1;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Find cluster
-     * ------------------------------------------------------------
-     */
 
     private String findClusterCode(
             String text,
@@ -2303,22 +1992,6 @@ public class MagicboardService extends InputMethodService {
 
         return null;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Find consonant
-     *
-     * Longest first is important.
-     *
-     * dha must be interpreted as:
-     *
-     * dh + a = ද
-     *
-     * not:
-     *
-     * d + h + a
-     * ------------------------------------------------------------
-     */
 
     private String findConsonantCode(
             String text,
@@ -2377,14 +2050,6 @@ public class MagicboardService extends InputMethodService {
         return null;
     }
 
-    /*
-     * ------------------------------------------------------------
-     * Find vowel after consonant
-     *
-     * Longest vowel first.
-     * ------------------------------------------------------------
-     */
-
     private String findVowelAfter(
             String text,
             int position
@@ -2426,12 +2091,6 @@ public class MagicboardService extends InputMethodService {
 
         return null;
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Independent vowel search
-     * ------------------------------------------------------------
-     */
 
     private String findIndependentVowel(
             String text,
@@ -2475,11 +2134,6 @@ public class MagicboardService extends InputMethodService {
 
                 if (result != null) {
 
-                    /*
-                     * Do not treat an independent vowel
-                     * as independent if it follows a
-                     * consonant parser.
-                     */
                     return result;
                 }
             }
@@ -2530,12 +2184,6 @@ public class MagicboardService extends InputMethodService {
         return 1;
     }
 
-    /*
-     * ------------------------------------------------------------
-     * Sinhala hal-kirima
-     * ------------------------------------------------------------
-     */
-
     private String addHalKirima(
             String consonant
     ) {
@@ -2546,11 +2194,6 @@ public class MagicboardService extends InputMethodService {
             return "";
         }
 
-        /*
-         * Sinhala virama:
-         *
-         * ්
-         */
         return consonant + "්";
     }
 
@@ -2579,15 +2222,34 @@ public class MagicboardService extends InputMethodService {
     }
 
     /*
-     * ------------------------------------------------------------
-     * Sinhala delete
+     * ============================================================
+     * CURSOR-AWARE DELETE ENGINE
+     * ============================================================
      *
-     * Delete one Roman input unit rather than blindly
-     * deleting one Sinhala Unicode character.
-     * ------------------------------------------------------------
+     * This is the important fix.
+     *
+     * The old logic deleted from sinhalaBuffer only.
+     * Therefore moving the cursor into the middle of text
+     * could still delete from the end of the Sinhala buffer.
+     *
+     * This version first checks the actual editor cursor.
+     * It uses the text immediately BEFORE the cursor and
+     * deletes one Unicode grapheme cluster.
+     *
+     * Examples:
+     *
+     *   මම ඔයා
+     *       ^
+     *
+     * Backspace deletes the character immediately before
+     * the cursor, not the final character of the whole text.
+     *
+     * Combined Sinhala characters and emoji are handled
+     * using BreakIterator.
+     * ============================================================
      */
 
-    private void deleteSinhalaCharacter() {
+    private void deleteAtCursor() {
 
         InputConnection input =
                 getCurrentInputConnection();
@@ -2596,33 +2258,161 @@ public class MagicboardService extends InputMethodService {
             return;
         }
 
+        /*
+         * If an active Sinhala composition is currently at
+         * the cursor, keep normal phonetic editing behaviour.
+         *
+         * We verify that the composed Sinhala text is actually
+         * immediately before the cursor. This prevents the
+         * buffer from incorrectly controlling deletion after
+         * the user moves the cursor somewhere else.
+         */
         if (sinhalaBuffer.length() > 0) {
 
-            /*
-             * Remove the last Roman character.
-             *
-             * This keeps composition active.
-             */
-            sinhalaBuffer =
-                    sinhalaBuffer.substring(
-                            0,
-                            sinhalaBuffer.length() - 1
-                    );
-
-            input.setComposingText(
+            String composed =
                     phoneticToSinhala(
                             sinhalaBuffer
-                    ),
-                    1
-            );
+                    );
 
-        } else {
+            CharSequence beforeCursor =
+                    input.getTextBeforeCursor(
+                            Math.max(
+                                    100,
+                                    composed.length() + 10
+                            ),
+                            0
+                    );
+
+            if (beforeCursor != null &&
+                    composed.length() > 0 &&
+                    beforeCursor.toString()
+                            .endsWith(composed)) {
+
+                deleteSinhalaBufferUnit();
+
+                return;
+            }
+
+            /*
+             * Cursor is no longer at the end of the active
+             * Sinhala composition.
+             *
+             * Finish the composition first, then use the
+             * real cursor position.
+             */
+            finishSinhalaComposition();
+        }
+
+        deletePreviousGrapheme(input);
+    }
+
+    private void deleteSinhalaBufferUnit() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input == null) {
+            return;
+        }
+
+        if (sinhalaBuffer.length() == 0) {
+            return;
+        }
+
+        sinhalaBuffer =
+                sinhalaBuffer.substring(
+                        0,
+                        sinhalaBuffer.length() - 1
+                );
+
+        input.setComposingText(
+                phoneticToSinhala(
+                        sinhalaBuffer
+                ),
+                1
+        );
+    }
+
+    private void deletePreviousGrapheme(
+            InputConnection input
+    ) {
+
+        if (input == null) {
+            return;
+        }
+
+        /*
+         * Read enough text before the cursor to identify
+         * the previous grapheme cluster.
+         */
+        CharSequence beforeCursor =
+                input.getTextBeforeCursor(
+                        100,
+                        0
+                );
+
+        if (beforeCursor == null ||
+                beforeCursor.length() == 0) {
+
+            return;
+        }
+
+        String text =
+                beforeCursor.toString();
+
+        BreakIterator iterator =
+                BreakIterator.getCharacterInstance();
+
+        iterator.setText(text);
+
+        int cursor =
+                text.length();
+
+        int previous =
+                iterator.previous();
+
+        if (previous == BreakIterator.DONE) {
 
             input.deleteSurroundingText(
                     1,
                     0
             );
+
+            return;
         }
+
+        int deleteLength =
+                cursor - previous;
+
+        if (deleteLength <= 0) {
+
+            input.deleteSurroundingText(
+                    1,
+                    0
+            );
+
+            return;
+        }
+
+        /*
+         * Delete exactly the grapheme immediately before
+         * the current cursor.
+         */
+        input.deleteSurroundingText(
+                deleteLength,
+                0
+        );
+    }
+
+    private void deleteSinhalaCharacter() {
+
+        /*
+         * Kept as a compatibility method for the Sinhala
+         * Backspace button.
+         *
+         * Actual deletion is now cursor-aware.
+         */
+        deleteAtCursor();
     }
 
     private void finishSinhalaComposition() {
@@ -2998,16 +2788,11 @@ public class MagicboardService extends InputMethodService {
 
     private void deleteOne() {
 
-        InputConnection input =
-                getCurrentInputConnection();
-
-        if (input != null) {
-
-            input.deleteSurroundingText(
-                    1,
-                    0
-            );
-        }
+        /*
+         * ALL keyboard modes now use the same
+         * cursor-aware deletion engine.
+         */
+        deleteAtCursor();
     }
 
     private void sendEnter() {
