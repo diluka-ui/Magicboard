@@ -1156,9 +1156,20 @@ public class MagicboardService extends InputMethodService {
         );
     }
 
+    /*
+     * ============================================================
+     * IMPROVED SINHALA PHONETIC ENGINE
+     * ============================================================
+     */
+
     private String phoneticToSinhala(
             String text
     ) {
+
+        if (text == null ||
+                text.length() == 0) {
+            return "";
+        }
 
         String value =
                 text.toLowerCase();
@@ -1213,11 +1224,221 @@ public class MagicboardService extends InputMethodService {
             String text
     ) {
 
-        if (text.length() == 0) {
+        if (text == null ||
+                text.length() == 0) {
             return "";
         }
 
-        String[][] map = {
+        String value =
+                text.toLowerCase();
+
+        /*
+         * ========================================================
+         * SPECIAL CLUSTERS
+         * ========================================================
+         */
+
+        String[][] special = {
+
+                {"shree", "ශ්‍රී"},
+                {"shri", "ශ්‍රි"},
+                {"shroo", "ශ්‍රෝ"},
+                {"shraa", "ශ්‍රා"},
+                {"shru", "ශ්‍රු"},
+                {"shre", "ශ්‍රේ"},
+                {"shro", "ශ්‍රො"},
+                {"shra", "ශ්‍ර"},
+
+                {"kshaa", "ක්ෂා"},
+                {"kshae", "ක්ෂැ"},
+                {"kshaee", "ක්ෂෑ"},
+                {"kshi", "ක්ෂි"},
+                {"kshii", "ක්ෂී"},
+                {"kshu", "ක්ෂු"},
+                {"kshuu", "ක්ෂූ"},
+                {"kshe", "ක්ෂෙ"},
+                {"kshee", "ක්ෂේ"},
+                {"ksho", "ක්ෂො"},
+                {"kshoo", "ක්ෂෝ"},
+                {"ksha", "ක්ෂ"},
+
+                {"kraa", "ක්‍රා"},
+                {"krae", "ක්‍රැ"},
+                {"kraee", "ක්‍රෑ"},
+                {"kri", "ක්‍රි"},
+                {"krii", "ක්‍රී"},
+                {"kru", "ක්‍රු"},
+                {"kruu", "ක්‍රූ"},
+                {"kre", "ක්‍රෙ"},
+                {"kree", "ක්‍රේ"},
+                {"kro", "ක්‍රො"},
+                {"kroo", "ක්‍රෝ"},
+                {"kra", "ක්‍ර"},
+
+                {"graa", "ග්‍රා"},
+                {"grae", "ග්‍රැ"},
+                {"graee", "ග්‍රෑ"},
+                {"gri", "ග්‍රි"},
+                {"grii", "ග්‍රී"},
+                {"gru", "ග්‍රු"},
+                {"gruu", "ග්‍රූ"},
+                {"gre", "ග්‍රෙ"},
+                {"gree", "ග්‍රේ"},
+                {"gro", "ග්‍රො"},
+                {"groo", "ග්‍රෝ"},
+                {"gra", "ග්‍ර"},
+
+                {"praa", "ප්‍රා"},
+                {"prae", "ප්‍රැ"},
+                {"praee", "ප්‍රෑ"},
+                {"pri", "ප්‍රි"},
+                {"prii", "ප්‍රී"},
+                {"pru", "ප්‍රු"},
+                {"pruu", "ප්‍රූ"},
+                {"pre", "ප්‍රෙ"},
+                {"pree", "ප්‍රේ"},
+                {"pro", "ප්‍රො"},
+                {"proo", "ප්‍රෝ"},
+                {"pra", "ප්‍ර"},
+
+                {"braa", "බ්‍රා"},
+                {"brae", "බ්‍රැ"},
+                {"braee", "බ්‍රෑ"},
+                {"bri", "බ්‍රි"},
+                {"brii", "බ්‍රී"},
+                {"bru", "බ්‍රු"},
+                {"bruu", "බ්‍රූ"},
+                {"bre", "බ්‍රෙ"},
+                {"bree", "බ්‍රේ"},
+                {"bro", "බ්‍රො"},
+                {"broo", "බ්‍රෝ"},
+                {"bra", "බ්‍ර"},
+
+                {"traa", "ට්‍රා"},
+                {"trae", "ට්‍රැ"},
+                {"traee", "ට්‍රෑ"},
+                {"tri", "ට්‍රි"},
+                {"trii", "ට්‍රී"},
+                {"tru", "ට්‍රු"},
+                {"truu", "ට්‍රූ"},
+                {"tre", "ට්‍රෙ"},
+                {"tree", "ට්‍රේ"},
+                {"tro", "ට්‍රො"},
+                {"troo", "ට්‍රෝ"},
+                {"tra", "ට්‍ර"},
+
+                {"draa", "ඩ්‍රා"},
+                {"drae", "ඩ්‍රැ"},
+                {"draee", "ඩ්‍රෑ"},
+                {"dri", "ඩ්‍රි"},
+                {"drii", "ඩ්‍රී"},
+                {"dru", "ඩ්‍රු"},
+                {"druu", "ඩ්‍රූ"},
+                {"dre", "ඩ්‍රෙ"},
+                {"dree", "ඩ්‍රේ"},
+                {"dro", "ඩ්‍රො"},
+                {"droo", "ඩ්‍රෝ"},
+                {"dra", "ඩ්‍ර"},
+
+                {"thraa", "ත්‍රා"},
+                {"thrae", "ත්‍රැ"},
+                {"thraee", "ත්‍රෑ"},
+                {"thri", "ත්‍රි"},
+                {"thrii", "ත්‍රී"},
+                {"thru", "ත්‍රු"},
+                {"thruu", "ත්‍රූ"},
+                {"thre", "ත්‍රෙ"},
+                {"three", "ත්‍රේ"},
+                {"thro", "ත්‍රො"},
+                {"throo", "ත්‍රෝ"},
+                {"thra", "ත්‍ර"},
+
+                {"dhraa", "ද්‍රා"},
+                {"dhrae", "ද්‍රැ"},
+                {"dhraee", "ද්‍රෑ"},
+                {"dhri", "ද්‍රි"},
+                {"dhrii", "ද්‍රී"},
+                {"dhru", "ද්‍රු"},
+                {"dhruu", "ද්‍රූ"},
+                {"dhre", "ද්‍රෙ"},
+                {"dhree", "ද්‍රේ"},
+                {"dhro", "ද්‍රො"},
+                {"dhroo", "ද්‍රෝ"},
+                {"dhra", "ද්‍ර"},
+
+                {"kyaa", "ක්‍යා"},
+                {"kyae", "ක්‍යැ"},
+                {"kyaee", "ක්‍යෑ"},
+                {"kyi", "ක්‍යි"},
+                {"kyii", "ක්‍යී"},
+                {"kyu", "ක්‍යු"},
+                {"kyuu", "ක්‍යූ"},
+                {"kye", "ක්‍යෙ"},
+                {"kyee", "ක්‍යේ"},
+                {"kyo", "ක්‍යො"},
+                {"kyoo", "ක්‍යෝ"},
+                {"kya", "ක්‍ය"},
+
+                {"ny aa", "න්‍යා"},
+                {"nyaa", "න්‍යා"},
+                {"nyae", "න්‍යැ"},
+                {"nyaee", "න්‍යෑ"},
+                {"nyi", "න්‍යි"},
+                {"nyii", "න්‍යී"},
+                {"nyu", "න්‍යු"},
+                {"nyuu", "න්‍යූ"},
+                {"nye", "න්‍යෙ"},
+                {"nyee", "න්‍යේ"},
+                {"nyo", "න්‍යො"},
+                {"nyoo", "න්‍යෝ"},
+                {"nya", "න්‍ය"}
+        };
+
+        for (String[] pair : special) {
+
+            if (value.equals(pair[0])) {
+                return pair[1];
+            }
+        }
+
+        /*
+         * ========================================================
+         * SPECIAL SINHALA LETTERS
+         * ========================================================
+         */
+
+        String[][] specialLetters = {
+
+                {"nnda", "ඬ"},
+                {"nda", "ඳ"},
+                {"mba", "ඹ"},
+                {"ncha", "ඤ"},
+                {"gnya", "ඥ"},
+                {"nya", "ඤ"},
+                {"nga", "ඟ"},
+                {"lha", "ළ"},
+                {"La", "ළ"},
+                {"ja", "ජ"},
+                {"zha", "ඣ"}
+        };
+
+        for (String[] pair : specialLetters) {
+
+            if (value.equals(
+                    pair[0].toLowerCase()
+            )) {
+
+                return pair[1];
+            }
+        }
+
+        /*
+         * ========================================================
+         * CONSONANTS
+         * ========================================================
+         */
+
+        String[][] consonants = {
 
                 {"sh", "ශ"},
                 {"ch", "ච"},
@@ -1228,97 +1449,109 @@ public class MagicboardService extends InputMethodService {
                 {"ph", "ෆ"},
                 {"bh", "භ"},
 
+                {"k", "ක"},
+                {"g", "ග"},
+                {"t", "ට"},
+                {"d", "ඩ"},
+                {"n", "න"},
+                {"p", "ප"},
+                {"b", "බ"},
+                {"m", "ම"},
+                {"y", "ය"},
+                {"r", "ර"},
+                {"l", "ල"},
+                {"w", "ව"},
+                {"s", "ස"},
+                {"h", "හ"},
+                {"j", "ජ"},
+                {"f", "ෆ"},
+                {"c", "ච"}
+        };
+
+        /*
+         * ========================================================
+         * VOWELS / VOWEL SIGNS
+         * ========================================================
+         */
+
+        String[][] vowels = {
+
+                {"aee", "ෑ"},
+                {"aa", "ා"},
+                {"ae", "ැ"},
+
+                {"ii", "ී"},
+                {"uu", "ූ"},
+
+                {"ee", "ේ"},
+                {"oo", "ෝ"},
+
+                {"ai", "ෛ"},
+                {"au", "ෞ"},
+
+                {"a", ""},
+                {"i", "ි"},
+                {"u", "ු"},
+                {"e", "ෙ"},
+                {"o", "ො"}
+        };
+
+        /*
+         * ========================================================
+         * COMPLETE SYLLABLE MATCH
+         * ========================================================
+         */
+
+        for (String[] consonant : consonants) {
+
+            String c =
+                    consonant[0];
+
+            String sinhala =
+                    consonant[1];
+
+            for (String[] vowel : vowels) {
+
+                String v =
+                        vowel[0];
+
+                if (value.equals(
+                        c + v
+                )) {
+
+                    if (v.equals("a")) {
+
+                        return sinhala;
+
+                    } else {
+
+                        return sinhala +
+                                vowel[1];
+                    }
+                }
+            }
+        }
+
+        /*
+         * ========================================================
+         * INDEPENDENT VOWELS
+         * ========================================================
+         */
+
+        String[][] independentVowels = {
+
                 {"aee", "ඈ"},
                 {"aa", "ආ"},
                 {"ae", "ඇ"},
+
                 {"ii", "ඊ"},
                 {"uu", "ඌ"},
+
                 {"ee", "ඒ"},
                 {"oo", "ඕ"},
 
-                {"ka", "ක"},
-                {"ki", "කි"},
-                {"ku", "කු"},
-                {"ke", "කේ"},
-                {"ko", "කො"},
-
-                {"ga", "ග"},
-                {"gi", "ගි"},
-                {"gu", "ගු"},
-                {"ge", "ගේ"},
-                {"go", "ගො"},
-
-                {"ta", "ට"},
-                {"ti", "ටි"},
-                {"tu", "ටු"},
-                {"te", "ටේ"},
-                {"to", "ටො"},
-
-                {"da", "ඩ"},
-                {"di", "ඩි"},
-                {"du", "ඩු"},
-                {"de", "ඩේ"},
-                {"do", "ඩො"},
-
-                {"na", "න"},
-                {"ni", "නි"},
-                {"nu", "නු"},
-                {"ne", "නේ"},
-                {"no", "නො"},
-
-                {"pa", "ප"},
-                {"pi", "පි"},
-                {"pu", "පු"},
-                {"pe", "පේ"},
-                {"po", "පො"},
-
-                {"ba", "බ"},
-                {"bi", "බි"},
-                {"bu", "බු"},
-                {"be", "බේ"},
-                {"bo", "බො"},
-
-                {"ma", "ම"},
-                {"mi", "මි"},
-                {"mu", "මු"},
-                {"me", "මේ"},
-                {"mo", "මො"},
-
-                {"ya", "ය"},
-                {"yi", "යි"},
-                {"yu", "යු"},
-                {"ye", "යේ"},
-                {"yo", "යො"},
-
-                {"ra", "ර"},
-                {"ri", "රි"},
-                {"ru", "රු"},
-                {"re", "රේ"},
-                {"ro", "රො"},
-
-                {"la", "ල"},
-                {"li", "ලි"},
-                {"lu", "ලු"},
-                {"le", "ලේ"},
-                {"lo", "ලො"},
-
-                {"wa", "ව"},
-                {"wi", "වි"},
-                {"wu", "වු"},
-                {"we", "වේ"},
-                {"wo", "වො"},
-
-                {"sa", "ස"},
-                {"si", "සි"},
-                {"su", "සු"},
-                {"se", "සේ"},
-                {"so", "සො"},
-
-                {"ha", "හ"},
-                {"hi", "හි"},
-                {"hu", "හු"},
-                {"he", "හේ"},
-                {"ho", "හො"},
+                {"ai", "ඓ"},
+                {"au", "ඖ"},
 
                 {"a", "අ"},
                 {"i", "ඉ"},
@@ -1327,26 +1560,123 @@ public class MagicboardService extends InputMethodService {
                 {"o", "ඔ"}
         };
 
+        /*
+         * ========================================================
+         * GENERIC PHONETIC PARSER
+         * ========================================================
+         */
+
         StringBuilder result =
                 new StringBuilder();
 
-        int i = 0;
+        int position = 0;
 
-        while (i < text.length()) {
+        while (position <
+                value.length()) {
 
-            boolean found = false;
+            boolean found =
+                    false;
 
-            for (String[] pair : map) {
+            /*
+             * Consonant first.
+             */
+            for (String[] consonant :
+                    consonants) {
+
+                String c =
+                        consonant[0];
+
+                String sinhala =
+                        consonant[1];
+
+                if (!startsWith(
+                        value,
+                        position,
+                        c
+                )) {
+                    continue;
+                }
+
+                int afterConsonant =
+                        position +
+                        c.length();
+
+                /*
+                 * Longest vowel first.
+                 */
+                for (String[] vowel :
+                        vowels) {
+
+                    String v =
+                            vowel[0];
+
+                    if (startsWith(
+                            value,
+                            afterConsonant,
+                            v
+                    )) {
+
+                        result.append(
+                                sinhala
+                        );
+
+                        if (!v.equals("a")) {
+
+                            result.append(
+                                    vowel[1]
+                            );
+                        }
+
+                        position =
+                                afterConsonant +
+                                v.length();
+
+                        found = true;
+
+                        break;
+                    }
+                }
+
+                /*
+                 * Consonant without vowel.
+                 */
+                if (!found) {
+
+                    result.append(
+                            sinhala
+                    );
+
+                    position =
+                            afterConsonant;
+
+                    found = true;
+                }
+
+                break;
+            }
+
+            if (found) {
+                continue;
+            }
+
+            /*
+             * Independent vowel.
+             */
+            for (String[] vowel :
+                    independentVowels) {
 
                 if (startsWith(
-                        text,
-                        i,
-                        pair[0]
+                        value,
+                        position,
+                        vowel[0]
                 )) {
 
-                    result.append(pair[1]);
+                    result.append(
+                            vowel[1]
+                    );
 
-                    i += pair[0].length();
+                    position +=
+                            vowel[0].length();
 
                     found = true;
 
@@ -1354,14 +1684,18 @@ public class MagicboardService extends InputMethodService {
                 }
             }
 
-            if (!found) {
-
-                result.append(
-                        text.charAt(i)
-                );
-
-                i++;
+            if (found) {
+                continue;
             }
+
+            /*
+             * Preserve unknown character.
+             */
+            result.append(
+                    value.charAt(position)
+            );
+
+            position++;
         }
 
         return result.toString();
@@ -1373,7 +1707,8 @@ public class MagicboardService extends InputMethodService {
             String value
     ) {
 
-        return position + value.length()
+        return position +
+                value.length()
                 <= text.length()
                 && text.regionMatches(
                         position,
