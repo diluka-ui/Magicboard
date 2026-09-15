@@ -1,4 +1,3 @@
-// @ts-nocheck
 package com.magicboard.keyboard;
 
 import android.inputmethodservice.InputMethodService;
@@ -6,30 +5,20 @@ import android.view.View;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputConnection;
 import android.widget.Button;
-import android.widget.HorizontalScrollView;
-import android.widget.ScrollView;
 import android.widget.LinearLayout;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.os.Handler;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MagicboardService extends InputMethodService {
 
-    private static final int KEYBOARD_CONTENT_HEIGHT = 240;
-    private static final int EMOJI_CATEGORY_HEIGHT = 46;
-    private static final int EMOJI_AREA_HEIGHT = 134;
-    private static final int EMOJI_BOTTOM_HEIGHT = 60;
+    private LinearLayout keyboard;
 
     private boolean shiftOn = false;
     private boolean capsLock = false;
@@ -39,170 +28,151 @@ public class MagicboardService extends InputMethodService {
 
     private long lastShiftTap = 0;
 
-    private LinearLayout root;
-    private LinearLayout keyboardArea;
+    private static final int KEYBOARD_CONTENT_HEIGHT = 240;
+
+    private Handler deleteHandler = new Handler();
+    private String sinhalaBuffer = "";
 
     private SharedPreferences stylePrefs;
+    private int keyboardBackgroundColor;
+    private int keyTransparency;
+    private int cornerRadius;
+    private boolean liquidTouch;
+    private boolean animatedBorder;
 
-    private int backgroundColor = Color.BLACK;
-    private String backgroundImageUri = "";
-    private boolean liquidTouch = true;
-    private boolean animatedBorder = true;
-    private int keyTransparency = 100;
-    private int cornerRadius = 12;
+    private Bitmap backgroundBitmap;
 
-    private Handler handler = new Handler();
+    private final Runnable deleteRunnable = new Runnable() {
+        @Override
+        public void run() {
+            InputConnection input = getCurrentInputConnection();
+            if (input != null) {
+                input.deleteSurroundingText(1, 0);
+                deleteHandler.postDelayed(this, 70);
+            }
+        }
+    };
 
-    private String sinhalaBuffer = "";
+    private int dp(float value) {
+        return (int) (
+                value * getResources().getDisplayMetrics().density + 0.5f
+        );
+    }
 
     @Override
     public View onCreateInputView() {
+        loadStyleSettings();
+        buildKeyboard();
+        return keyboard;
+    }
 
-        loadStyle();
+    @Override
+    public void onStartInput(
+            android.view.inputmethod.EditorInfo attribute,
+            boolean restarting
+    ) {
+        super.onStartInput(attribute, restarting);
+        sinhalaBuffer = "";
+        loadStyleSettings();
+    }
 
-        root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
-        root.setPadding(0, 0, 0, 0);
+    private void loadStyleSettings() {
+        stylePrefs = getSharedPreferences(
+                "MagicboardStyle",
+                MODE_PRIVATE
+        );
 
-        applyKeyboardBackground(root);
+        keyboardBackgroundColor = stylePrefs.getInt(
+                "backgroundColor",
+                Color.BLACK
+        );
 
-        keyboardArea = new LinearLayout(this);
-        keyboardArea.setOrientation(LinearLayout.VERTICAL);
-        keyboardArea.setGravity(Gravity.CENTER);
-
-        root.addView(
-                keyboardArea,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(KEYBOARD_CONTENT_HEIGHT)
+        keyTransparency = Math.max(
+                0,
+                Math.min(
+                        100,
+                        stylePrefs.getInt(
+                                "keyTransparency",
+                                100
+                        )
                 )
         );
 
-        refreshKeyboard();
-
-        return root;
-    }
-
-    private int dp(int value) {
-        return (int) (
-                value *
-                getResources()
-                        .getDisplayMetrics()
-                        .density +
-                0.5f
+        cornerRadius = Math.max(
+                0,
+                Math.min(
+                        30,
+                        stylePrefs.getInt(
+                                "cornerRadius",
+                                8
+                        )
+                )
         );
+
+        liquidTouch = stylePrefs.getBoolean(
+                "liquidTouch",
+                true
+        );
+
+        animatedBorder = stylePrefs.getBoolean(
+                "animatedBorder",
+                true
+        );
+
+        loadBackgroundImage();
     }
 
-    private void loadStyle() {
+    private void loadBackgroundImage() {
+        backgroundBitmap = null;
 
-        stylePrefs =
-                getSharedPreferences(
-                        "MagicboardStyle",
-                        MODE_PRIVATE
-                );
+        String uriString = stylePrefs.getString(
+                "backgroundImageUri",
+                ""
+        );
 
-        backgroundColor =
-                stylePrefs.getInt(
-                        "backgroundColor",
-                        Color.BLACK
-                );
-
-        backgroundImageUri =
-                stylePrefs.getString(
-                        "backgroundImageUri",
-                        ""
-                );
-
-        liquidTouch =
-                stylePrefs.getBoolean(
-                        "liquidTouch",
-                        true
-                );
-
-        animatedBorder =
-                stylePrefs.getBoolean(
-                        "animatedBorder",
-                        true
-                );
-
-        keyTransparency =
-                stylePrefs.getInt(
-                        "keyTransparency",
-                        100
-                );
-
-        cornerRadius =
-                stylePrefs.getInt(
-                        "cornerRadius",
-                        12
-                );
-    }
-
-    private void applyKeyboardBackground(
-            LinearLayout target
-    ) {
-
-        if (target == null) {
+        if (uriString == null || uriString.length() == 0) {
             return;
         }
 
-        if (backgroundImageUri != null &&
-                !backgroundImageUri.isEmpty()) {
+        try {
+            Uri uri = Uri.parse(uriString);
+            InputStream input =
+                    getContentResolver().openInputStream(uri);
 
-            try {
-
-                Uri uri =
-                        Uri.parse(backgroundImageUri);
-
-                InputStream stream =
-                        getContentResolver()
-                                .openInputStream(uri);
-
-                if (stream != null) {
-
-                    Bitmap bitmap =
-                            BitmapFactory
-                                    .decodeStream(stream);
-
-                    stream.close();
-
-                    if (bitmap != null) {
-
-                        BitmapDrawable drawable =
-                                new BitmapDrawable(
-                                        getResources(),
-                                        bitmap
-                                );
-
-                        drawable.setGravity(
-                                Gravity.FILL
-                        );
-
-                        target.setBackground(
-                                drawable
-                        );
-
-                        return;
-                    }
-                }
-
-            } catch (Exception ignored) {
+            if (input != null) {
+                backgroundBitmap =
+                        BitmapFactory.decodeStream(input);
+                input.close();
             }
+        } catch (Exception ignored) {
+            backgroundBitmap = null;
         }
-
-        target.setBackgroundColor(
-                backgroundColor
-        );
     }
 
-    private void refreshKeyboard() {
+    private void buildKeyboard() {
 
-        if (keyboardArea == null) {
-            return;
-        }
+        keyboard = new LinearLayout(this);
 
-        keyboardArea.removeAllViews();
+        keyboard.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        keyboard.setGravity(
+                Gravity.CENTER
+        );
+
+        keyboard.setPadding(
+                dp(3),
+                dp(3),
+                dp(3),
+                dp(4)
+        );
+
+        keyboard.setMinimumHeight(
+                dp(KEYBOARD_CONTENT_HEIGHT + 7)
+        );
+
+        applyKeyboardBackground();
 
         if (emojiMode) {
             buildEmojiKeyboard();
@@ -211,99 +181,211 @@ public class MagicboardService extends InputMethodService {
         } else if (sinhalaMode) {
             buildSinhalaKeyboard();
         } else {
-            buildEnglishKeyboard();
+            buildLetterKeyboard();
         }
+    }
+
+    /*
+     * BACKGROUND
+     *
+     * Bitmap is drawn with CENTER_CROP behavior:
+     * the whole keyboard is covered while preserving
+     * the original photo aspect ratio.
+     */
+
+    private void applyKeyboardBackground() {
+
+        if (backgroundBitmap != null) {
+
+            keyboard.setBackground(
+                    new CropBitmapDrawable(
+                            backgroundBitmap
+                    )
+            );
+
+        } else {
+
+            keyboard.setBackgroundColor(
+                    keyboardBackgroundColor
+            );
+        }
+    }
+
+    private class CropBitmapDrawable
+            extends android.graphics.drawable.Drawable {
+
+        private final Bitmap bitmap;
+        private final android.graphics.Paint paint =
+                new android.graphics.Paint(
+                        android.graphics.Paint.ANTI_ALIAS_FLAG |
+                        android.graphics.Paint.FILTER_BITMAP_FLAG
+                );
+
+        CropBitmapDrawable(Bitmap bitmap) {
+            this.bitmap = bitmap;
+        }
+
+        @Override
+        public void draw(android.graphics.Canvas canvas) {
+
+            if (bitmap == null) {
+                return;
+            }
+
+            int viewWidth = getBounds().width();
+            int viewHeight = getBounds().height();
+
+            if (viewWidth <= 0 || viewHeight <= 0) {
+                return;
+            }
+
+            float bitmapWidth = bitmap.getWidth();
+            float bitmapHeight = bitmap.getHeight();
+
+            float scale = Math.max(
+                    viewWidth / bitmapWidth,
+                    viewHeight / bitmapHeight
+            );
+
+            float scaledWidth =
+                    bitmapWidth * scale;
+
+            float scaledHeight =
+                    bitmapHeight * scale;
+
+            float left =
+                    (viewWidth - scaledWidth) / 2f;
+
+            float top =
+                    (viewHeight - scaledHeight) / 2f;
+
+            android.graphics.RectF destination =
+                    new android.graphics.RectF(
+                            left,
+                            top,
+                            left + scaledWidth,
+                            top + scaledHeight
+                    );
+
+            canvas.drawBitmap(
+                    bitmap,
+                    null,
+                    destination,
+                    paint
+            );
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(
+                android.graphics.ColorFilter filter
+        ) {
+            paint.setColorFilter(filter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    private LinearLayout createRow(int height) {
+
+        LinearLayout row =
+                new LinearLayout(this);
+
+        row.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        row.setGravity(
+                Gravity.CENTER
+        );
+
+        row.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(height)
+                )
+        );
+
+        return row;
     }
 
     private Button createKey(
             String text,
-            View.OnClickListener listener
+            float weight
     ) {
 
-        Button button = new Button(this);
+        Button button =
+                new Button(this);
 
         button.setText(text);
-        button.setTextSize(17);
-        button.setTextColor(
-                Color.rgb(0, 255, 100)
-        );
-
-        button.setGravity(Gravity.CENTER);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(15);
         button.setAllCaps(false);
-        button.setPadding(
-                dp(2),
-                0,
-                dp(2),
-                0
+
+        button.setGravity(
+                Gravity.CENTER
         );
 
-        applyKeyBackground(button);
+        button.setPadding(0, 0, 0, 0);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
 
-        button.setOnClickListener(listener);
+        applyKeyStyle(button);
 
-        if (liquidTouch) {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(56),
+                        weight
+                );
 
-            button.setOnTouchListener(
-                    new View.OnTouchListener() {
+        params.setMargins(
+                dp(1),
+                dp(2),
+                dp(1),
+                dp(2)
+        );
 
-                        @Override
-                        public boolean onTouch(
-                                View view,
-                                MotionEvent event
-                        ) {
+        button.setLayoutParams(params);
 
-                            if (event.getAction() ==
-                                    MotionEvent.ACTION_DOWN) {
-
-                                startLiquidTouch(
-                                        button,
-                                        event.getX(),
-                                        event.getY()
-                                );
-                            }
-
-                            return false;
-                        }
-                    }
-            );
-        }
-
-        if (animatedBorder) {
-            startBorderAnimation(button);
-        }
+        attachTouchAnimation(button);
 
         return button;
     }
 
-    private void applyKeyBackground(
-            Button button
-    ) {
+    private void applyKeyStyle(Button button) {
 
         int alpha =
-                (int) (
+                (int)(
                         255f *
-                        keyTransparency /
-                        100f
+                        (keyTransparency / 100f)
                 );
 
-        int color =
-                Color.argb(
-                        alpha,
-                        0,
-                        35,
-                        18
-                );
-
-        GradientDrawable drawable =
-                new GradientDrawable();
-
-        drawable.setColor(color);
-
-        drawable.setCornerRadius(
-                dp(cornerRadius)
+        alpha = Math.max(
+                0,
+                Math.min(255, alpha)
         );
 
-        drawable.setStroke(
+        GradientDrawable background =
+                new GradientDrawable();
+
+        background.setColor(
+                Color.argb(
+                        alpha,
+                        24,
+                        24,
+                        24
+                )
+        );
+
+        background.setStroke(
                 dp(1),
                 Color.rgb(
                         0,
@@ -312,640 +394,781 @@ public class MagicboardService extends InputMethodService {
                 )
         );
 
-        button.setBackground(drawable);
+        background.setCornerRadius(
+                dp(cornerRadius)
+        );
+
+        button.setBackground(
+                background
+        );
     }
 
-    private void startLiquidTouch(
-            Button button,
-            float x,
-            float y
-    ) {
+    /*
+     * FIXED LIQUID TOUCH
+     *
+     * A Button is not a ViewGroup.
+     * Therefore the old ViewGroup cast is removed.
+     */
 
-        if (button == null) {
-            return;
-        }
-
-        button.animate()
-                .scaleX(0.94f)
-                .scaleY(0.94f)
-                .alpha(0.82f)
-                .setDuration(70)
-                .withEndAction(
-                        new Runnable() {
-
-                            @Override
-                            public void run() {
-
-                                button.animate()
-                                        .scaleX(1f)
-                                        .scaleY(1f)
-                                        .alpha(1f)
-                                        .setDuration(350)
-                                        .start();
-                            }
-                        }
-                )
-                .start();
-    }
-
-    private void startBorderAnimation(
+    private void attachTouchAnimation(
             final Button button
     ) {
 
-        if (button == null) {
+        if (!liquidTouch && !animatedBorder) {
             return;
         }
 
-        final Handler borderHandler =
-                new Handler();
-
-        final Runnable runnable =
-                new Runnable() {
-
-                    private boolean bright = false;
+        button.setOnTouchListener(
+                new View.OnTouchListener() {
 
                     @Override
-                    public void run() {
+                    public boolean onTouch(
+                            View v,
+                            MotionEvent event
+                    ) {
 
-                        if (button.getParent() == null) {
-                            return;
-                        }
+                        if (event.getAction() ==
+                                MotionEvent.ACTION_DOWN) {
 
-                        Drawable drawable =
-                                button.getBackground();
-
-                        if (drawable instanceof
-                                GradientDrawable) {
-
-                            GradientDrawable gd =
-                                    (GradientDrawable)
-                                            drawable;
-
-                            if (bright) {
-
-                                gd.setStroke(
-                                        dp(2),
-                                        Color.rgb(
-                                                0,
-                                                255,
-                                                100
-                                        )
-                                );
-
-                            } else {
-
-                                gd.setStroke(
-                                        dp(1),
-                                        Color.rgb(
-                                                0,
-                                                170,
-                                                70
-                                        )
-                                );
+                            if (liquidTouch) {
+                                button.animate()
+                                        .scaleX(0.94f)
+                                        .scaleY(0.94f)
+                                        .alpha(0.82f)
+                                        .setDuration(70)
+                                        .start();
                             }
 
-                            bright = !bright;
+                            if (animatedBorder) {
+                                GradientDrawable active =
+                                        createAnimatedBorder(
+                                                Color.rgb(
+                                                        120,
+                                                        255,
+                                                        180
+                                                )
+                                        );
+
+                                button.setBackground(active);
+                            }
+
+                        } else if (
+                                event.getAction() ==
+                                        MotionEvent.ACTION_UP ||
+                                event.getAction() ==
+                                        MotionEvent.ACTION_CANCEL
+                        ) {
+
+                            button.animate()
+                                    .scaleX(1f)
+                                    .scaleY(1f)
+                                    .alpha(1f)
+                                    .setDuration(150)
+                                    .start();
+
+                            if (animatedBorder) {
+                                button.postDelayed(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                applyKeyStyle(button);
+                                            }
+                                        },
+                                        120
+                                );
+                            }
                         }
 
-                        borderHandler.postDelayed(
-                                this,
-                                900
-                        );
+                        return false;
                     }
-                };
-
-        borderHandler.postDelayed(
-                runnable,
-                900
+                }
         );
     }
 
-    private void addRow(
-            String[] keys,
-            int weight
+    private GradientDrawable createAnimatedBorder(
+            int borderColor
     ) {
 
-        LinearLayout row =
-                new LinearLayout(this);
+        int alpha =
+                (int)(
+                        255f *
+                        (keyTransparency / 100f)
+                );
 
-        row.setOrientation(
-                LinearLayout.HORIZONTAL
+        GradientDrawable drawable =
+                new GradientDrawable();
+
+        drawable.setColor(
+                Color.argb(
+                        alpha,
+                        24,
+                        24,
+                        24
+                )
         );
 
-        row.setGravity(Gravity.CENTER);
+        drawable.setStroke(
+                dp(2),
+                borderColor
+        );
 
-        for (String key : keys) {
+        drawable.setCornerRadius(
+                dp(cornerRadius)
+        );
 
-            Button button =
-                    createKey(
-                            key,
-                            new View.OnClickListener() {
+        return drawable;
+    }
 
-                                @Override
-                                public void onClick(
-                                        View v
-                                ) {
+    /*
+     * ENGLISH
+     */
 
-                                    handleKey(key);
-                                }
-                            }
-                    );
+    private void buildLetterKeyboard() {
 
-            LinearLayout.LayoutParams params =
-                    new LinearLayout.LayoutParams(
-                            0,
-                            dp(58),
-                            1f
-                    );
+        addLetterRow("QWERTYUIOP");
+        addLetterRow("ASDFGHJKL");
 
-            params.setMargins(
-                    dp(2),
-                    dp(2),
-                    dp(2),
-                    dp(2)
-            );
+        LinearLayout row =
+                createRow(60);
 
-            row.addView(
-                    button,
-                    params
+        addShift(row);
+
+        addLetterKey(row, "Z");
+        addLetterKey(row, "X");
+        addLetterKey(row, "C");
+        addLetterKey(row, "V");
+        addLetterKey(row, "B");
+        addLetterKey(row, "N");
+        addLetterKey(row, "M");
+
+        addBackspace(row);
+
+        keyboard.addView(row);
+
+        addControlRow();
+    }
+
+    private void addLetterRow(String letters) {
+
+        LinearLayout row =
+                createRow(60);
+
+        for (int i = 0;
+             i < letters.length();
+             i++) {
+
+            addLetterKey(
+                    row,
+                    String.valueOf(
+                            letters.charAt(i)
+                    )
             );
         }
 
-        keyboardArea.addView(
-                row,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(62)
-                )
-        );
+        keyboard.addView(row);
     }
 
-    private void buildEnglishKeyboard() {
-
-        addRow(
-                new String[]{
-                        "Q","W","E","R","T",
-                        "Y","U","I","O","P"
-                },
-                10
-        );
-
-        addRow(
-                new String[]{
-                        "A","S","D","F","G",
-                        "H","J","K","L"
-                },
-                9
-        );
-
-        addRow(
-                new String[]{
-                        "⇧","Z","X","C","V",
-                        "B","N","M","⌫"
-                },
-                9
-        );
-
-        addBottomRow();
-    }
-
-    private void buildSinhalaKeyboard() {
-
-        addRow(
-                new String[]{
-                        "q","w","e","r","t",
-                        "y","u","i","o","p"
-                },
-                10
-        );
-
-        addRow(
-                new String[]{
-                        "a","s","d","f","g",
-                        "h","j","k","l"
-                },
-                9
-        );
-
-        addRow(
-                new String[]{
-                        "⇧","z","x","c","v",
-                        "b","n","m","⌫"
-                },
-                9
-        );
-
-        addBottomRow();
-    }
-
-    private void buildNumberKeyboard() {
-
-        addRow(
-                new String[]{
-                        "1","2","3","4","5",
-                        "6","7","8","9","0"
-                },
-                10
-        );
-
-        addRow(
-                new String[]{
-                        "@","#","$","%","&",
-                        "*","-","+","="
-                },
-                9
-        );
-
-        addRow(
-                new String[]{
-                        "?","!","(",")",
-                        "[","]","{","}","⌫"
-                },
-                9
-        );
-
-        addBottomRow();
-    }
-
-    private void addBottomRow() {
-
-        LinearLayout row =
-                new LinearLayout(this);
-
-        row.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
-        row.setGravity(Gravity.CENTER);
-
-        Button emoji =
-                createKey(
-                        "😊",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                emojiMode = true;
-                                numberMode = false;
-                                refreshKeyboard();
-                            }
-                        }
-                );
-
-        Button lang =
-                createKey(
-                        sinhalaMode
-                                ? "EN"
-                                : "සිං",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                sinhalaMode =
-                                        !sinhalaMode;
-
-                                numberMode = false;
-                                emojiMode = false;
-
-                                sinhalaBuffer = "";
-
-                                refreshKeyboard();
-                            }
-                        }
-                );
-
-        Button numbers =
-                createKey(
-                        "123",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                numberMode =
-                                        !numberMode;
-
-                                emojiMode = false;
-
-                                refreshKeyboard();
-                            }
-                        }
-                );
-
-        Button space =
-                createKey(
-                        "SPACE",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                commitSpace();
-                            }
-                        }
-                );
-
-        Button enter =
-                createKey(
-                        "↵",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                InputConnection ic =
-                                        getCurrentInputConnection();
-
-                                if (ic != null) {
-                                    ic.sendKeyEvent(
-                                            new android.view.KeyEvent(
-                                                    android.view.KeyEvent.ACTION_DOWN,
-                                                    android.view.KeyEvent.KEYCODE_ENTER
-                                            )
-                                    );
-
-                                    ic.sendKeyEvent(
-                                            new android.view.KeyEvent(
-                                                    android.view.KeyEvent.ACTION_UP,
-                                                    android.view.KeyEvent.KEYCODE_ENTER
-                                            )
-                                    );
-                                }
-                            }
-                        }
-                );
-
-        addBottomButton(row, emoji, 1);
-        addBottomButton(row, lang, 1);
-        addBottomButton(row, numbers, 1);
-        addBottomButton(row, space, 4);
-        addBottomButton(row, enter, 1);
-
-        keyboardArea.addView(
-                row,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(54)
-                )
-        );
-    }
-
-    private void addBottomButton(
+    private void addLetterKey(
             LinearLayout row,
-            Button button,
-            int weight
+            String letter
     ) {
 
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(50),
-                        weight
+        boolean uppercase =
+                capsLock || shiftOn;
+
+        String display =
+                uppercase
+                        ? letter.toUpperCase()
+                        : letter.toLowerCase();
+
+        Button button =
+                createKey(
+                        display,
+                        1
                 );
 
-        params.setMargins(
-                dp(2),
-                dp(2),
-                dp(2),
-                dp(2)
-        );
+        button.setOnClickListener(v -> {
 
-        row.addView(
-                button,
-                params
-        );
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input == null) {
+                return;
+            }
+
+            boolean upper =
+                    capsLock || shiftOn;
+
+            String value =
+                    upper
+                            ? letter.toUpperCase()
+                            : letter.toLowerCase();
+
+            input.commitText(
+                    value,
+                    1
+            );
+
+            if (shiftOn && !capsLock) {
+                shiftOn = false;
+                refreshKeyboard();
+            }
+        });
+
+        row.addView(button);
     }
 
-    private void handleKey(
-            String key
-    ) {
+    private void addShift(LinearLayout row) {
 
-        if ("⇧".equals(key)) {
+        String text =
+                capsLock
+                        ? "⇧"
+                        : (shiftOn ? "↑" : "⇧");
+
+        Button button =
+                createKey(
+                        text,
+                        1.35f
+                );
+
+        button.setOnClickListener(v -> {
 
             long now =
                     System.currentTimeMillis();
 
-            if (now - lastShiftTap < 500) {
-                capsLock = true;
-                shiftOn = true;
+            if (now - lastShiftTap < 400) {
+
+                capsLock = !capsLock;
+                shiftOn = false;
+                lastShiftTap = 0;
+
             } else {
-                shiftOn = !shiftOn;
+
+                lastShiftTap = now;
+
+                if (capsLock) {
+                    capsLock = false;
+                    shiftOn = false;
+                } else {
+                    shiftOn = !shiftOn;
+                }
             }
 
-            lastShiftTap = now;
-
             refreshKeyboard();
-            return;
-        }
+        });
 
-        if ("⌫".equals(key)) {
-
-            deleteOne();
-            return;
-        }
-
-        if (sinhalaMode) {
-
-            typeSinhalaPhonetic(key);
-            return;
-        }
-
-        if (numberMode) {
-
-            commitText(key);
-            return;
-        }
-
-        String output = key;
-
-        if (shiftOn || capsLock) {
-            output = key.toUpperCase();
-        }
-
-        commitText(output);
-
-        if (shiftOn && !capsLock) {
-            shiftOn = false;
-            refreshKeyboard();
-        }
+        row.addView(button);
     }
 
-    private void commitText(
-            String text
+    private void addBackspace(
+            LinearLayout row
     ) {
 
-        InputConnection ic =
-                getCurrentInputConnection();
+        Button button =
+                createKey(
+                        "⌫",
+                        1.35f
+                );
 
-        if (ic != null) {
-            ic.commitText(
-                    text,
-                    1
+        button.setOnTouchListener(
+                new View.OnTouchListener() {
+
+                    @Override
+                    public boolean onTouch(
+                            View v,
+                            MotionEvent event
+                    ) {
+
+                        if (event.getAction() ==
+                                MotionEvent.ACTION_DOWN) {
+
+                            deleteOne();
+
+                            deleteHandler.postDelayed(
+                                    deleteRunnable,
+                                    450
+                            );
+
+                            return true;
+                        }
+
+                        if (
+                                event.getAction() ==
+                                        MotionEvent.ACTION_UP ||
+                                event.getAction() ==
+                                        MotionEvent.ACTION_CANCEL
+                        ) {
+
+                            deleteHandler.removeCallbacks(
+                                    deleteRunnable
+                            );
+
+                            return true;
+                        }
+
+                        return true;
+                    }
+                }
+        );
+
+        row.addView(button);
+    }
+
+    /*
+     * SINHALA PHONETIC
+     */
+
+    private void buildSinhalaKeyboard() {
+
+        addSinhalaPhoneticRow(
+                "QWERTYUIOP"
+        );
+
+        addSinhalaPhoneticRow(
+                "ASDFGHJKL"
+        );
+
+        LinearLayout row =
+                createRow(60);
+
+        addSinhalaShift(row);
+
+        addSinhalaPhoneticKey(row, "Z");
+        addSinhalaPhoneticKey(row, "X");
+        addSinhalaPhoneticKey(row, "C");
+        addSinhalaPhoneticKey(row, "V");
+        addSinhalaPhoneticKey(row, "B");
+        addSinhalaPhoneticKey(row, "N");
+        addSinhalaPhoneticKey(row, "M");
+
+        addSinhalaBackspace(row);
+
+        keyboard.addView(row);
+
+        addSinhalaPhoneticControlRow();
+    }
+
+    private void addSinhalaPhoneticRow(
+            String letters
+    ) {
+
+        LinearLayout row =
+                createRow(60);
+
+        for (int i = 0;
+             i < letters.length();
+             i++) {
+
+            addSinhalaPhoneticKey(
+                    row,
+                    String.valueOf(
+                            letters.charAt(i)
+                    )
             );
         }
+
+        keyboard.addView(row);
     }
 
-    private void commitSpace() {
+    private void addSinhalaPhoneticKey(
+            LinearLayout row,
+            String letter
+    ) {
 
-        if (sinhalaMode &&
-                !sinhalaBuffer.isEmpty()) {
+        boolean upper =
+                capsLock || shiftOn;
 
-            commitSinhalaBuffer();
-        }
+        String display =
+                upper
+                        ? letter.toUpperCase()
+                        : letter.toLowerCase();
 
-        commitText(" ");
+        Button button =
+                createKey(
+                        display,
+                        1
+                );
+
+        button.setOnClickListener(v -> {
+
+            commitSinhalaPhonetic(
+                    display
+            );
+
+            if (shiftOn && !capsLock) {
+                shiftOn = false;
+                refreshKeyboard();
+            }
+        });
+
+        row.addView(button);
     }
 
-    private void deleteOne() {
+    private void addSinhalaShift(
+            LinearLayout row
+    ) {
+
+        String text =
+                capsLock
+                        ? "⇧"
+                        : (shiftOn ? "↑" : "⇧");
+
+        Button button =
+                createKey(
+                        text,
+                        1.35f
+                );
+
+        button.setOnClickListener(v -> {
+
+            long now =
+                    System.currentTimeMillis();
+
+            if (now - lastShiftTap < 400) {
+
+                capsLock = !capsLock;
+                shiftOn = false;
+                lastShiftTap = 0;
+
+            } else {
+
+                lastShiftTap = now;
+
+                if (capsLock) {
+                    capsLock = false;
+                    shiftOn = false;
+                } else {
+                    shiftOn = !shiftOn;
+                }
+            }
+
+            refreshKeyboard();
+        });
+
+        row.addView(button);
+    }
+
+    private void addSinhalaBackspace(
+            LinearLayout row
+    ) {
+
+        Button button =
+                createKey(
+                        "⌫",
+                        1.35f
+                );
+
+        button.setOnTouchListener(
+                (v, event) -> {
+
+                    if (event.getAction() ==
+                            MotionEvent.ACTION_DOWN) {
+
+                        deleteSinhalaCharacter();
+
+                        deleteHandler.postDelayed(
+                                deleteRunnable,
+                                450
+                        );
+
+                        return true;
+                    }
+
+                    if (
+                            event.getAction() ==
+                                    MotionEvent.ACTION_UP ||
+                            event.getAction() ==
+                                    MotionEvent.ACTION_CANCEL
+                    ) {
+
+                        deleteHandler.removeCallbacks(
+                                deleteRunnable
+                        );
+
+                        return true;
+                    }
+
+                    return true;
+                }
+        );
+
+        row.addView(button);
+    }
+
+    private void addSinhalaPhoneticControlRow() {
+
+        LinearLayout row =
+                createRow(60);
+
+        Button numbers =
+                createKey("123", 1.25f);
+
+        Button emoji =
+                createKey("😊", 1.0f);
+
+        Button english =
+                createKey("ABC", 1.25f);
+
+        Button space =
+                createKey("SPACE", 3.3f);
+
+        Button enter =
+                createKey("↵", 1.35f);
+
+        numbers.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            numberMode = true;
+            emojiMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        emoji.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            emojiMode = true;
+            numberMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        english.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            sinhalaMode = false;
+            shiftOn = false;
+            capsLock = false;
+            numberMode = false;
+            emojiMode = false;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            commit(" ");
+        });
+
+        enter.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            sendEnter();
+        });
+
+        row.addView(numbers);
+        row.addView(emoji);
+        row.addView(english);
+        row.addView(space);
+        row.addView(enter);
+
+        keyboard.addView(row);
+    }
+
+    /*
+     * PHONETIC ENGINE
+     */
+
+    private void commitSinhalaPhonetic(
+            String roman
+    ) {
 
         InputConnection input =
                 getCurrentInputConnection();
 
-        if (input != null) {
-
-            if (sinhalaMode &&
-                    !sinhalaBuffer.isEmpty()) {
-
-                if (sinhalaBuffer.length() > 0) {
-
-                    sinhalaBuffer =
-                            sinhalaBuffer.substring(
-                                    0,
-                                    sinhalaBuffer.length() - 1
-                            );
-
-                    input.setComposingText(
-                            phoneticToSinhala(
-                                    sinhalaBuffer
-                            ),
-                            1
-                    );
-
-                    return;
-                }
-            }
-
-            input.deleteSurroundingText(
-                    1,
-                    0
-            );
-        }
-    }
-
-    private void typeSinhalaPhonetic(
-            String key
-    ) {
-
-        if (key.equals("q")) {
-            sinhalaBuffer += "q";
-        } else {
-            sinhalaBuffer += key.toLowerCase();
-        }
-
-        String converted =
-                phoneticToSinhala(
-                        sinhalaBuffer
-                );
-
-        InputConnection ic =
-                getCurrentInputConnection();
-
-        if (ic != null) {
-
-            ic.setComposingText(
-                    converted,
-                    1
-            );
-        }
-    }
-
-    private void commitSinhalaBuffer() {
-
-        InputConnection ic =
-                getCurrentInputConnection();
-
-        if (ic == null) {
-            sinhalaBuffer = "";
+        if (input == null) {
             return;
         }
 
-        String converted =
+        sinhalaBuffer +=
+                roman.toLowerCase();
+
+        input.setComposingText(
                 phoneticToSinhala(
                         sinhalaBuffer
-                );
-
-        ic.commitText(
-                converted,
+                ),
                 1
         );
-
-        sinhalaBuffer = "";
     }
 
     private String phoneticToSinhala(
-            String input
+            String text
     ) {
 
-        if (input == null ||
-                input.isEmpty()) {
-            return "";
-        }
+        String value =
+                text.toLowerCase();
 
-        String word =
-                input.toLowerCase();
+        String[][] words = {
 
-        String[] exceptions = {
-                "mama","oya","api","hari",
-                "kohomada","mokak","me",
-                "eka","mata","oyata",
-                "karanna","yanna","enna",
-                "hondai","godak","tikak",
-                "nangi","malli","amma",
-                "thaththa","machan",
-                "ayubowan","suba",
-                "istuti","sthuthi"
+                {"mama", "මම"},
+                {"api", "අපි"},
+                {"oyaa", "ඔයා"},
+                {"oya", "ඔයා"},
+                {"mage", "මගේ"},
+                {"mata", "මට"},
+                {"hari", "හරි"},
+                {"eka", "එක"},
+                {"mee", "මේ"},
+                {"me", "මේ"},
+                {"kauda", "කවුද"},
+                {"kawda", "කවුද"},
+                {"kohomada", "කොහොමද"},
+                {"mokakda", "මොකක්ද"},
+                {"mokada", "මොකද"},
+                {"dan", "දැන්"},
+                {"deng", "දැන්"},
+                {"danna", "දන්න"},
+                {"dannawa", "දන්නවා"},
+                {"karanna", "කරන්න"},
+                {"karanawa", "කරනවා"},
+                {"puluwan", "පුළුවන්"},
+                {"puluvanda", "පුළුවන්ද"},
+                {"ona", "ඕන"},
+                {"one", "ඕනේ"},
+                {"thiyenawa", "තියෙනවා"},
+                {"nathi", "නැති"},
+                {"naha", "නෑ"},
+                {"ne", "නේ"},
+                {"hariyata", "හරියට"},
+                {"supiri", "සුපිරි"},
+                {"godak", "ගොඩක්"}
         };
 
-        String[] exceptionValues = {
-                "මම","ඔයා","අපි","හරි",
-                "කොහොමද","මොකක්","මේ",
-                "එක","මට","ඔයාට",
-                "කරන්න","යන්න","එන්න",
-                "හොඳයි","ගොඩක්","ටිකක්",
-                "නංගි","මල්ලි","අම්මා",
-                "තාත්තා","මචං",
-                "ආයුබෝවන්","සුබ",
-                "ඉස්තුති","ස්තුති"
-        };
+        for (String[] pair : words) {
 
-        for (int i = 0;
-             i < exceptions.length;
-             i++) {
-
-            if (word.equals(exceptions[i])) {
-
-                return exceptionValues[i];
+            if (value.equals(pair[0])) {
+                return pair[1];
             }
         }
 
-        return convertSyllables(word);
+        return convertSyllables(value);
     }
 
     private String convertSyllables(
             String text
     ) {
+
+        if (text.length() == 0) {
+            return "";
+        }
+
+        String[][] map = {
+
+                {"sh", "ශ"},
+                {"ch", "ච"},
+                {"th", "ත"},
+                {"dh", "ද"},
+                {"kh", "ඛ"},
+                {"gh", "ඝ"},
+                {"ph", "ෆ"},
+                {"bh", "භ"},
+
+                {"aee", "ඈ"},
+                {"aa", "ආ"},
+                {"ae", "ඇ"},
+                {"ii", "ඊ"},
+                {"uu", "ඌ"},
+                {"ee", "ඒ"},
+                {"oo", "ඕ"},
+
+                {"ka", "ක"},
+                {"ki", "කි"},
+                {"ku", "කු"},
+                {"ke", "කේ"},
+                {"ko", "කො"},
+
+                {"ga", "ග"},
+                {"gi", "ගි"},
+                {"gu", "ගු"},
+                {"ge", "ගේ"},
+                {"go", "ගො"},
+
+                {"ta", "ට"},
+                {"ti", "ටි"},
+                {"tu", "ටු"},
+                {"te", "ටේ"},
+                {"to", "ටො"},
+
+                {"da", "ඩ"},
+                {"di", "ඩි"},
+                {"du", "ඩු"},
+                {"de", "ඩේ"},
+                {"do", "ඩො"},
+
+                {"na", "න"},
+                {"ni", "නි"},
+                {"nu", "නු"},
+                {"ne", "නේ"},
+                {"no", "නො"},
+
+                {"pa", "ප"},
+                {"pi", "පි"},
+                {"pu", "පු"},
+                {"pe", "පේ"},
+                {"po", "පො"},
+
+                {"ba", "බ"},
+                {"bi", "බි"},
+                {"bu", "බු"},
+                {"be", "බේ"},
+                {"bo", "බො"},
+
+                {"ma", "ම"},
+                {"mi", "මි"},
+                {"mu", "මු"},
+                {"me", "මේ"},
+                {"mo", "මො"},
+
+                {"ya", "ය"},
+                {"yi", "යි"},
+                {"yu", "යු"},
+                {"ye", "යේ"},
+                {"yo", "යො"},
+
+                {"ra", "ර"},
+                {"ri", "රි"},
+                {"ru", "රු"},
+                {"re", "රේ"},
+                {"ro", "රො"},
+
+                {"la", "ල"},
+                {"li", "ලි"},
+                {"lu", "ලු"},
+                {"le", "ලේ"},
+                {"lo", "ලො"},
+
+                {"wa", "ව"},
+                {"wi", "වි"},
+                {"wu", "වු"},
+                {"we", "වේ"},
+                {"wo", "වො"},
+
+                {"sa", "ස"},
+                {"si", "සි"},
+                {"su", "සු"},
+                {"se", "සේ"},
+                {"so", "සො"},
+
+                {"ha", "හ"},
+                {"hi", "හි"},
+                {"hu", "හු"},
+                {"he", "හේ"},
+                {"ho", "හො"},
+
+                {"a", "අ"},
+                {"i", "ඉ"},
+                {"u", "උ"},
+                {"e", "එ"},
+                {"o", "ඔ"}
+        };
 
         StringBuilder result =
                 new StringBuilder();
@@ -954,536 +1177,449 @@ public class MagicboardService extends InputMethodService {
 
         while (i < text.length()) {
 
-            String two =
-                    i + 2 <= text.length()
-                            ? text.substring(
-                                    i,
-                                    i + 2
-                            )
-                            : "";
+            boolean found = false;
 
-            String three =
-                    i + 3 <= text.length()
-                            ? text.substring(
-                                    i,
-                                    i + 3
-                            )
-                            : "";
+            for (String[] pair : map) {
 
-            String four =
-                    i + 4 <= text.length()
-                            ? text.substring(
-                                    i,
-                                    i + 4
-                            )
-                            : "";
+                if (startsWith(
+                        text,
+                        i,
+                        pair[0]
+                )) {
 
-            String mapped = null;
+                    result.append(pair[1]);
 
-            if (!four.isEmpty()) {
-                mapped = mapPhonetic(four);
+                    i += pair[0].length();
+
+                    found = true;
+
+                    break;
+                }
             }
 
-            if (mapped == null &&
-                    !three.isEmpty()) {
-                mapped = mapPhonetic(three);
+            if (!found) {
+
+                result.append(
+                        text.charAt(i)
+                );
+
+                i++;
             }
-
-            if (mapped == null &&
-                    !two.isEmpty()) {
-                mapped = mapPhonetic(two);
-            }
-
-            if (mapped != null) {
-
-                result.append(mapped);
-                i += mapped.length() == 0
-                        ? 1
-                        : getPhoneticLength(
-                                text,
-                                i
-                        );
-
-                continue;
-            }
-
-            String one =
-                    text.substring(
-                            i,
-                            i + 1
-                    );
-
-            String oneMapped =
-                    mapPhonetic(one);
-
-            if (oneMapped != null) {
-                result.append(oneMapped);
-            } else {
-                result.append(one);
-            }
-
-            i++;
         }
 
         return result.toString();
     }
 
-    private int getPhoneticLength(
+    private boolean startsWith(
             String text,
-            int position
+            int position,
+            String value
     ) {
 
-        String[] keys = {
-                "ksh","shri","thra",
-                "dhra","chh","ng",
-                "gn","kh","gh","ch",
-                "jh","th","dh","ph",
-                "bh","sh","tr","dr",
-                "kr","gr","pr","br",
-                "sw","kw","gw"
-        };
+        return position + value.length()
+                <= text.length()
+                && text.regionMatches(
+                        position,
+                        value,
+                        0,
+                        value.length()
+                );
+    }
 
-        for (String key : keys) {
+    private void deleteSinhalaCharacter() {
 
-            if (position + key.length()
-                    <= text.length() &&
-                    text.startsWith(
-                            key,
-                            position
-                    )) {
+        InputConnection input =
+                getCurrentInputConnection();
 
-                return key.length();
-            }
+        if (input == null) {
+            return;
         }
 
-        if (position + 2 <= text.length()) {
+        if (sinhalaBuffer.length() > 0) {
 
-            String two =
-                    text.substring(
-                            position,
-                            position + 2
+            sinhalaBuffer =
+                    sinhalaBuffer.substring(
+                            0,
+                            sinhalaBuffer.length() - 1
                     );
 
-            if (mapPhonetic(two) != null) {
-                return 2;
-            }
-        }
+            input.setComposingText(
+                    phoneticToSinhala(
+                            sinhalaBuffer
+                    ),
+                    1
+            );
 
-        return 1;
+        } else {
+
+            input.deleteSurroundingText(
+                    1,
+                    0
+            );
+        }
     }
 
-    private String mapPhonetic(
-            String key
-    ) {
+    private void finishSinhalaComposition() {
 
-        String[] from = {
+        InputConnection input =
+                getCurrentInputConnection();
 
-                "aa","ae","a",
-                "ii","ee","i",
-                "uu","oo","u",
+        if (input != null &&
+                sinhalaBuffer.length() > 0) {
 
-                "ka","ki","ku",
-                "ke","ko",
+            input.commitText(
+                    phoneticToSinhala(
+                            sinhalaBuffer
+                    ),
+                    1
+            );
 
-                "ga","gi","gu",
-                "ge","go",
+            sinhalaBuffer = "";
+        }
+    }
 
-                "cha","chi","chu",
-                "che","cho",
+    /*
+     * CONTROLS
+     */
 
-                "ja","ji","ju",
-                "je","jo",
+    private void addControlRow() {
 
-                "ta","ti","tu",
-                "te","to",
+        LinearLayout row =
+                createRow(60);
 
-                "da","di","du",
-                "de","do",
+        Button numbers =
+                createKey("123", 1.25f);
 
-                "na","ni","nu",
-                "ne","no",
+        Button emoji =
+                createKey("😊", 1.0f);
 
-                "pa","pi","pu",
-                "pe","po",
+        Button sinhala =
+                createKey("සිං", 1.25f);
 
-                "ba","bi","bu",
-                "be","bo",
+        Button space =
+                createKey("SPACE", 3.3f);
 
-                "ma","mi","mu",
-                "me","mo",
+        Button enter =
+                createKey("↵", 1.35f);
 
-                "ya","yi","yu",
-                "ye","yo",
+        numbers.setOnClickListener(v -> {
 
-                "ra","ri","ru",
-                "re","ro",
+            numberMode = true;
+            emojiMode = false;
+            sinhalaMode = false;
 
-                "la","li","lu",
-                "le","lo",
+            refreshKeyboard();
+        });
 
-                "wa","wi","wu",
-                "we","wo",
+        emoji.setOnClickListener(v -> {
 
-                "sa","si","su",
-                "se","so",
+            emojiMode = true;
+            numberMode = false;
+            sinhalaMode = false;
 
-                "ha","hi","hu",
-                "he","ho",
+            refreshKeyboard();
+        });
 
-                "sha","shi","shu",
-                "she","sho",
+        sinhala.setOnClickListener(v -> {
 
-                "tha","thi","thu",
-                "the","tho",
+            sinhalaMode = true;
+            numberMode = false;
+            emojiMode = false;
 
-                "dha","dhi","dhu",
-                "dhe","dho",
+            shiftOn = false;
+            capsLock = false;
 
-                "fa","fi","fu",
-                "fe","fo",
+            refreshKeyboard();
+        });
 
-                "qa","qi","qu",
-                "qe","qo",
+        space.setOnClickListener(v -> commit(" "));
 
-                "nga","ngi","ngu",
-                "nge","ngo",
+        enter.setOnClickListener(v -> sendEnter());
 
-                "nya","nyi","nyu",
-                "nye","nyo",
+        row.addView(numbers);
+        row.addView(emoji);
+        row.addView(sinhala);
+        row.addView(space);
+        row.addView(enter);
 
-                "ksh"
+        keyboard.addView(row);
+    }
+
+    /*
+     * NUMBERS
+     */
+
+    private void buildNumberKeyboard() {
+
+        String[] rows = {
+                "1234567890",
+                "-/:;()$&@\".",
+                "#+=_%*!?"
         };
 
-        String[] to = {
+        for (String letters : rows) {
 
-                "ආ","ඇ","අ",
-                "ඊ","ඊ","ඉ",
-                "ඌ","ඌ","උ",
+            LinearLayout row =
+                    createRow(60);
 
-                "ක","කි","කු",
-                "කේ","කො",
+            for (int i = 0;
+                 i < letters.length();
+                 i++) {
 
-                "ග","ගි","ගු",
-                "ගේ","ගො",
+                final String value =
+                        String.valueOf(
+                                letters.charAt(i)
+                        );
 
-                "ච","චි","චු",
-                "චේ","චො",
+                Button button =
+                        createKey(
+                                value,
+                                1
+                        );
 
-                "ජ","ජි","ජු",
-                "ජේ","ජො",
+                button.setOnClickListener(
+                        v -> commit(value)
+                );
 
-                "ට","ටි","ටු",
-                "ටේ","ටො",
-
-                "ඩ","ඩි","ඩු",
-                "ඩේ","ඩො",
-
-                "න","නි","නු",
-                "නේ","නො",
-
-                "ප","පි","පු",
-                "පේ","පො",
-
-                "බ","බි","බු",
-                "බේ","බො",
-
-                "ම","මි","මු",
-                "මේ","මො",
-
-                "ය","යි","යු",
-                "යේ","යො",
-
-                "ර","රි","රු",
-                "රේ","රො",
-
-                "ල","ලි","ලු",
-                "ලේ","ලො",
-
-                "ව","වි","වු",
-                "වේ","වො",
-
-                "ස","සි","සු",
-                "සේ","සො",
-
-                "හ","හි","හු",
-                "හේ","හො",
-
-                "ශ","ශි","ශු",
-                "ශේ","ශො",
-
-                "ත","ති","තු",
-                "තේ","තො",
-
-                "ද","දි","දු",
-                "දේ","දො",
-
-                "ෆ","ෆි","ෆු",
-                "ෆේ","ෆො",
-
-                "ක","කි","කු",
-                "කේ","කො",
-
-                "ං","ං","ං",
-                "ං","ං",
-
-                "ඤ","ඤි","ඤු",
-                "ඤේ","ඤො",
-
-                "ක්ෂ"
-        };
-
-        for (int i = 0;
-             i < from.length;
-             i++) {
-
-            if (from[i].equals(key)) {
-                return to[i];
+                row.addView(button);
             }
+
+            keyboard.addView(row);
         }
 
-        return null;
+        LinearLayout row =
+                createRow(60);
+
+        Button abc =
+                createKey("ABC", 1.25f);
+
+        Button sinhala =
+                createKey("සිං", 1.25f);
+
+        Button space =
+                createKey("SPACE", 3.2f);
+
+        Button back =
+                createKey("⌫", 1.25f);
+
+        Button enter =
+                createKey("↵", 1.25f);
+
+        abc.setOnClickListener(v -> {
+
+            numberMode = false;
+            emojiMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        sinhala.setOnClickListener(v -> {
+
+            numberMode = false;
+            emojiMode = false;
+            sinhalaMode = true;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(
+                v -> commit(" ")
+        );
+
+        back.setOnClickListener(
+                v -> deleteOne()
+        );
+
+        enter.setOnClickListener(
+                v -> sendEnter()
+        );
+
+        row.addView(abc);
+        row.addView(sinhala);
+        row.addView(space);
+        row.addView(back);
+        row.addView(enter);
+
+        keyboard.addView(row);
     }
+
+    /*
+     * EMOJI
+     */
 
     private void buildEmojiKeyboard() {
 
-        LinearLayout categories =
-                new LinearLayout(this);
+        String[] emojiRows = {
 
-        categories.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
-        String[] categoryKeys = {
-                "😀","❤️","🐱","🍔",
-                "⚽","🚗","💡","✨"
+                "😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😍 🥰 😎 🤓 🤩",
+                "😘 😗 😋 😛 😜 🤔 🤗 😐 😑 😶 🙄 😏 😣 😥 😮 🤐",
+                "😯 😪 😫 🥱 😴 🤢 🤮 🤧 😷 🤒 🤕 ❤️ 🧡 💛 💚 💙",
+                "💜 🖤 🤍 🤎 💔 💕 💞 💓 💗 💖 💘 💝 💯 👍 👎 👌"
         };
 
-        for (String category : categoryKeys) {
+        for (String values : emojiRows) {
 
-            Button b =
-                    createKey(
-                            category,
-                            new View.OnClickListener() {
+            LinearLayout row =
+                    createRow(46);
 
-                                @Override
-                                public void onClick(
-                                        View v
-                                ) {
-                                }
-                            }
-                    );
+            String[] emojis =
+                    values.split(" ");
 
-            categories.addView(
-                    b,
-                    new LinearLayout.LayoutParams(
-                            0,
-                            dp(EMOJI_CATEGORY_HEIGHT),
-                            1f
-                    )
-            );
-        }
+            for (String emoji : emojis) {
 
-        keyboardArea.addView(
-                categories,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(EMOJI_CATEGORY_HEIGHT)
-                )
-        );
+                Button button =
+                        createKey(
+                                emoji,
+                                1
+                        );
 
-        HorizontalScrollView scroll =
-                new HorizontalScrollView(this);
+                button.setTextSize(19);
 
-        LinearLayout emojiRow =
-                new LinearLayout(this);
-
-        emojiRow.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        String[] emojis = {
-                "😀","😃","😄","😁","😆",
-                "😅","😂","🤣","😊","😇",
-                "🙂","🙃","😉","😌","😍",
-                "🥰","😘","😎","🤩","🥳",
-                "🤔","🤗","😐","😶","🙄",
-                "😏","😣","😥","😮","🤐",
-                "😴","🤤","😋","😛","😜",
-                "🤪","🤨","🧐","🤓","😕",
-                "❤️","💚","💙","💜","🖤",
-                "💯","🔥","⭐","✨","💫",
-                "👍","👎","👏","🙏","💪",
-                "🎉","🎊","🚀","💻","🔐"
-        };
-
-        LinearLayout current =
-                new LinearLayout(this);
-
-        current.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
-        for (int i = 0;
-             i < emojis.length;
-             i++) {
-
-            final String emoji =
-                    emojis[i];
-
-            Button b =
-                    createKey(
-                            emoji,
-                            new View.OnClickListener() {
-
-                                @Override
-                                public void onClick(
-                                        View v
-                                ) {
-
-                                    commitText(
-                                            emoji
-                                    );
-                                }
-                            }
-                    );
-
-            current.addView(
-                    b,
-                    new LinearLayout.LayoutParams(
-                            dp(58),
-                            dp(58)
-                    )
-            );
-
-            if ((i + 1) % 8 == 0 ||
-                    i == emojis.length - 1) {
-
-                emojiRow.addView(
-                        current
+                button.setOnClickListener(
+                        v -> commit(
+                                ((Button)v)
+                                        .getText()
+                                        .toString()
+                        )
                 );
 
-                current =
-                        new LinearLayout(this);
-
-                current.setOrientation(
-                        LinearLayout.HORIZONTAL
-                );
+                row.addView(button);
             }
+
+            keyboard.addView(row);
         }
 
-        scroll.addView(
-                emojiRow
-        );
+        LinearLayout row =
+                createRow(60);
 
-        keyboardArea.addView(
-                scroll,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(EMOJI_AREA_HEIGHT)
-                )
-        );
+        Button abc =
+                createKey("ABC", 1.3f);
 
-        LinearLayout bottom =
-                new LinearLayout(this);
+        Button sinhala =
+                createKey("සිං", 1.3f);
 
-        bottom.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
-        Button back =
-                createKey(
-                        "⌫",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                deleteOne();
-                            }
-                        }
-                );
-
-        Button close =
-                createKey(
-                        "ABC",
-                        new View.OnClickListener() {
-
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
-
-                                emojiMode = false;
-                                refreshKeyboard();
-                            }
-                        }
-                );
+        Button numbers =
+                createKey("123", 1.3f);
 
         Button space =
-                createKey(
-                        "SPACE",
-                        new View.OnClickListener() {
+                createKey("SPACE", 3f);
 
-                            @Override
-                            public void onClick(
-                                    View v
-                            ) {
+        Button back =
+                createKey("⌫", 1.3f);
 
-                                commitText(" ");
-                            }
-                        }
-                );
+        abc.setOnClickListener(v -> {
 
-        addBottomButton(
-                bottom,
-                close,
-                1
+            emojiMode = false;
+            numberMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        sinhala.setOnClickListener(v -> {
+
+            emojiMode = false;
+            numberMode = false;
+            sinhalaMode = true;
+
+            refreshKeyboard();
+        });
+
+        numbers.setOnClickListener(v -> {
+
+            emojiMode = false;
+            numberMode = true;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(
+                v -> commit(" ")
         );
 
-        addBottomButton(
-                bottom,
-                space,
-                4
+        back.setOnClickListener(
+                v -> deleteOne()
         );
 
-        addBottomButton(
-                bottom,
-                back,
-                1
+        row.addView(abc);
+        row.addView(sinhala);
+        row.addView(numbers);
+        row.addView(space);
+        row.addView(back);
+
+        keyboard.addView(row);
+    }
+
+    private void commit(String value) {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input != null) {
+            input.commitText(
+                    value,
+                    1
+            );
+        }
+    }
+
+    private void deleteOne() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input != null) {
+            input.deleteSurroundingText(
+                    1,
+                    0
+            );
+        }
+    }
+
+    private void sendEnter() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input == null) {
+            return;
+        }
+
+        input.sendKeyEvent(
+                new android.view.KeyEvent(
+                        android.view.KeyEvent.ACTION_DOWN,
+                        android.view.KeyEvent.KEYCODE_ENTER
+                )
         );
 
-        keyboardArea.addView(
-                bottom,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(EMOJI_BOTTOM_HEIGHT)
+        input.sendKeyEvent(
+                new android.view.KeyEvent(
+                        android.view.KeyEvent.ACTION_UP,
+                        android.view.KeyEvent.KEYCODE_ENTER
                 )
         );
     }
 
-    @Override
-    public void onFinishInput() {
+    private void refreshKeyboard() {
 
-        super.onFinishInput();
+        loadStyleSettings();
 
-        shiftOn = false;
-        capsLock = false;
-        numberMode = false;
-        emojiMode = false;
-        sinhalaBuffer = "";
-    }
+        if (keyboard != null) {
+            keyboard.removeAllViews();
+            applyKeyboardBackground();
 
-    @Override
-    public void onDestroy() {
-
-        if (handler != null) {
-            handler.removeCallbacksAndMessages(
-                    null
-            );
+            if (emojiMode) {
+                buildEmojiKeyboard();
+            } else if (numberMode) {
+                buildNumberKeyboard();
+            } else if (sinhalaMode) {
+                buildSinhalaKeyboard();
+            } else {
+                buildLetterKeyboard();
+            }
         }
-
-        super.onDestroy();
     }
 }
+```0
