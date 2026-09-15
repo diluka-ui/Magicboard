@@ -49,7 +49,11 @@ public class MainActivity extends Activity {
         scroll.setBackgroundColor(Color.BLACK);
 
         LinearLayout main = new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
+
+        main.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
         main.setPadding(
                 dp(18),
                 dp(24),
@@ -60,33 +64,71 @@ public class MainActivity extends Activity {
         scroll.addView(main);
 
         TextView title = new TextView(this);
+
         title.setText("MAGICBOARD");
-        title.setTextColor(Color.rgb(0, 255, 100));
+
+        title.setTextColor(
+                Color.rgb(0, 255, 100)
+        );
+
         title.setTextSize(30);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, dp(8));
+
+        title.setGravity(
+                Gravity.CENTER
+        );
+
+        title.setPadding(
+                0,
+                0,
+                0,
+                dp(8)
+        );
 
         main.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("KEYBOARD STYLE");
-        subtitle.setTextColor(Color.WHITE);
+
+        subtitle.setText(
+                "KEYBOARD STYLE"
+        );
+
+        subtitle.setTextColor(
+                Color.WHITE
+        );
+
         subtitle.setTextSize(14);
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 0, 0, dp(20));
+
+        subtitle.setGravity(
+                Gravity.CENTER
+        );
+
+        subtitle.setPadding(
+                0,
+                0,
+                0,
+                dp(20)
+        );
 
         main.addView(subtitle);
 
         /*
          * Preview
          */
-        TextView previewTitle = sectionTitle("LIVE STYLE PREVIEW");
+
+        TextView previewTitle =
+                sectionTitle(
+                        "LIVE STYLE PREVIEW"
+                );
+
         main.addView(previewTitle);
 
         LinearLayout preview =
                 new LinearLayout(this);
 
-        preview.setGravity(Gravity.CENTER);
+        preview.setGravity(
+                Gravity.CENTER
+        );
+
         preview.setPadding(
                 dp(8),
                 dp(14),
@@ -107,9 +149,16 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         previewKey.setText("A");
-        previewKey.setTextColor(Color.WHITE);
+
+        previewKey.setTextColor(
+                getLetterColor()
+        );
+
         previewKey.setTextSize(25);
-        previewKey.setGravity(Gravity.CENTER);
+
+        previewKey.setGravity(
+                Gravity.CENTER
+        );
 
         previewKey.setBackground(
                 roundedBackground(
@@ -133,7 +182,12 @@ public class MainActivity extends Activity {
         /*
          * Background color
          */
-        main.addView(sectionTitle("BACKGROUND COLOR"));
+
+        main.addView(
+                sectionTitle(
+                        "BACKGROUND COLOR"
+                )
+        );
 
         LinearLayout colorRow =
                 new LinearLayout(this);
@@ -156,7 +210,9 @@ public class MainActivity extends Activity {
                 Color.rgb(0, 25, 45)
         };
 
-        for (int i = 0; i < colors.length; i++) {
+        for (int i = 0;
+             i < colors.length;
+             i++) {
 
             final int selectedColor =
                     colorValues[i];
@@ -164,9 +220,15 @@ public class MainActivity extends Activity {
             Button button =
                     new Button(this);
 
-            button.setText(colors[i]);
+            button.setText(
+                    colors[i]
+            );
+
             button.setTextSize(9);
-            button.setTextColor(Color.WHITE);
+
+            button.setTextColor(
+                    Color.WHITE
+            );
 
             button.setOnClickListener(v -> {
 
@@ -201,8 +263,11 @@ public class MainActivity extends Activity {
         /*
          * Background photo
          */
+
         main.addView(
-                sectionTitle("BACKGROUND PHOTO")
+                sectionTitle(
+                        "BACKGROUND PHOTO"
+                )
         );
 
         Button photoButton =
@@ -221,7 +286,9 @@ public class MainActivity extends Activity {
                     Intent.CATEGORY_OPENABLE
             );
 
-            intent.setType("image/*");
+            intent.setType(
+                    "image/*"
+            );
 
             startActivityForResult(
                     intent,
@@ -239,7 +306,9 @@ public class MainActivity extends Activity {
         removePhoto.setOnClickListener(v -> {
 
             prefs.edit()
-                    .remove("backgroundImageUri")
+                    .remove(
+                            "backgroundImageUri"
+                    )
                     .apply();
 
             Toast.makeText(
@@ -254,10 +323,121 @@ public class MainActivity extends Activity {
         main.addView(removePhoto);
 
         /*
+         * LETTER COLOR
+         */
+
+        main.addView(
+                sectionTitle(
+                        "LETTER COLOR"
+                )
+        );
+
+        LinearLayout letterColorRow =
+                new LinearLayout(this);
+
+        letterColorRow.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        String[] letterColors = {
+                "WHITE",
+                "BLACK",
+                "GREEN",
+                "CYAN",
+                "BLUE",
+                "YELLOW",
+                "PINK"
+        };
+
+        int[] letterColorValues = {
+                Color.WHITE,
+                Color.BLACK,
+                Color.rgb(0, 255, 100),
+                Color.CYAN,
+                Color.rgb(80, 150, 255),
+                Color.YELLOW,
+                Color.rgb(255, 100, 200)
+        };
+
+        for (int i = 0;
+             i < letterColors.length;
+             i++) {
+
+            final int selectedLetterColor =
+                    letterColorValues[i];
+
+            Button button =
+                    new Button(this);
+
+            button.setText(
+                    letterColors[i]
+            );
+
+            button.setTextSize(9);
+
+            button.setTextColor(
+                    selectedLetterColor
+            );
+
+            button.setBackground(
+                    roundedBackground(
+                            Color.rgb(18, 18, 18),
+                            Color.rgb(0, 255, 100),
+                            1,
+                            8
+                    )
+            );
+
+            button.setOnClickListener(v -> {
+
+                prefs.edit()
+                        .putInt(
+                                "letterColor",
+                                selectedLetterColor
+                        )
+                        .apply();
+
+                Toast.makeText(
+                        this,
+                        "Letter color saved",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                buildStyleApp();
+            });
+
+            LinearLayout.LayoutParams params =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(55),
+                            1
+                    );
+
+            params.setMargins(
+                    dp(2),
+                    dp(2),
+                    dp(2),
+                    dp(2)
+            );
+
+            letterColorRow.addView(
+                    button,
+                    params
+            );
+        }
+
+        main.addView(
+                letterColorRow
+        );
+
+        /*
          * Liquid animation
          */
+
         main.addView(
-                sectionTitle("TOUCH EFFECTS")
+                sectionTitle(
+                        "TOUCH EFFECTS"
+                )
         );
 
         Switch liquidSwitch =
@@ -267,7 +447,10 @@ public class MainActivity extends Activity {
                 "LIQUID WATER TOUCH"
         );
 
-        liquidSwitch.setTextColor(Color.WHITE);
+        liquidSwitch.setTextColor(
+                Color.WHITE
+        );
+
         liquidSwitch.setTextSize(16);
 
         liquidSwitch.setChecked(
@@ -289,7 +472,9 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(liquidSwitch);
+        main.addView(
+                liquidSwitch
+        );
 
         Switch borderSwitch =
                 new Switch(this);
@@ -298,7 +483,10 @@ public class MainActivity extends Activity {
                 "ANIMATED KEY BORDER"
         );
 
-        borderSwitch.setTextColor(Color.WHITE);
+        borderSwitch.setTextColor(
+                Color.WHITE
+        );
+
         borderSwitch.setTextSize(16);
 
         borderSwitch.setChecked(
@@ -320,13 +508,18 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(borderSwitch);
+        main.addView(
+                borderSwitch
+        );
 
         /*
          * Key transparency
          */
+
         main.addView(
-                sectionTitle("KEY TRANSPARENCY")
+                sectionTitle(
+                        "KEY TRANSPARENCY"
+                )
         );
 
         SeekBar transparency =
@@ -371,13 +564,18 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(transparency);
+        main.addView(
+                transparency
+        );
 
         /*
          * Key corner radius
          */
+
         main.addView(
-                sectionTitle("KEY CORNER RADIUS")
+                sectionTitle(
+                        "KEY CORNER RADIUS"
+                )
         );
 
         SeekBar radius =
@@ -419,13 +617,18 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(radius);
+        main.addView(
+                radius
+        );
 
         /*
          * Enable keyboard
          */
+
         main.addView(
-                sectionTitle("KEYBOARD")
+                sectionTitle(
+                        "KEYBOARD"
+                )
         );
 
         Button enable =
@@ -446,11 +649,14 @@ public class MainActivity extends Activity {
             }
         });
 
-        main.addView(enable);
+        main.addView(
+                enable
+        );
 
         /*
          * Reset style
          */
+
         Button reset =
                 styleButton(
                         "RESET STYLE"
@@ -458,7 +664,9 @@ public class MainActivity extends Activity {
 
         reset.setOnClickListener(v -> {
 
-            prefs.edit().clear().apply();
+            prefs.edit()
+                    .clear()
+                    .apply();
 
             Toast.makeText(
                     this,
@@ -469,7 +677,9 @@ public class MainActivity extends Activity {
             buildStyleApp();
         });
 
-        main.addView(reset);
+        main.addView(
+                reset
+        );
 
         setContentView(scroll);
     }
@@ -482,10 +692,13 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         title.setText(text);
+
         title.setTextColor(
                 Color.rgb(0, 255, 100)
         );
+
         title.setTextSize(15);
+
         title.setPadding(
                 0,
                 dp(22),
@@ -504,10 +717,13 @@ public class MainActivity extends Activity {
                 new Button(this);
 
         button.setText(text);
+
         button.setTextColor(
                 Color.rgb(0, 255, 100)
         );
+
         button.setTextSize(13);
+
         button.setAllCaps(false);
 
         button.setBackground(
@@ -570,6 +786,14 @@ public class MainActivity extends Activity {
         return prefs.getInt(
                 "cornerRadius",
                 8
+        );
+    }
+
+    private int getLetterColor() {
+
+        return prefs.getInt(
+                "letterColor",
+                Color.WHITE
         );
     }
 
