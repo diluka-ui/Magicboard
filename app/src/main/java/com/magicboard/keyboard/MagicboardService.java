@@ -22,6 +22,7 @@ public class MagicboardService extends InputMethodService {
     private boolean capsLock = false;
     private boolean numberMode = false;
     private boolean emojiMode = false;
+    private boolean sinhalaMode = false;
 
     private long lastShiftTap = 0;
 
@@ -89,6 +90,8 @@ public class MagicboardService extends InputMethodService {
             buildEmojiKeyboard();
         } else if (numberMode) {
             buildNumberKeyboard();
+        } else if (sinhalaMode) {
+            buildSinhalaKeyboard();
         } else {
             buildLetterKeyboard();
         }
@@ -175,7 +178,7 @@ public class MagicboardService extends InputMethodService {
     }
 
     // =====================================================
-    // LETTER KEYBOARD
+    // ENGLISH LETTER KEYBOARD
     // =====================================================
 
     private void buildLetterKeyboard() {
@@ -263,6 +266,228 @@ public class MagicboardService extends InputMethodService {
         });
 
         row.addView(button);
+    }
+
+    // =====================================================
+    // SINHALA KEYBOARD
+    // =====================================================
+
+    private void buildSinhalaKeyboard() {
+
+        if (shiftOn) {
+
+            // Alternate Sinhala layer
+            addSinhalaRow("ඍ ඎ ඏ ඐ ඖ ඓ");
+            addSinhalaRow("ඛ ඝ ඡ ඣ ඨ ඪ ථ ධ");
+            addSinhalaRow("ඞ ඥ ඦ ඬ ඳ ඹ");
+            addSinhalaSignsRow();
+
+        } else {
+
+            // Main Sinhala layer
+            addSinhalaRow("අ ආ ඇ ඈ ඉ ඊ උ ඌ එ ඒ");
+            addSinhalaRow("ඔ ඕ ඖ ක ඛ ග ඝ ඞ ච");
+            addSinhalaRow("ඡ ජ ඣ ඤ ට ඨ ඩ ඪ ණ");
+            addSinhalaRow("ත ථ ද ධ න ප ඵ බ භ");
+            addSinhalaRow("ම ඹ ය ර ල ව ශ ෂ ස හ ළ ෆ");
+
+        }
+
+        addSinhalaControlRow();
+    }
+
+    private void addSinhalaRow(String letters) {
+
+        LinearLayout row =
+                createRow(48);
+
+        String[] keys =
+                letters.split(" ");
+
+        for (String letter : keys) {
+
+            addSinhalaKey(
+                    row,
+                    letter
+            );
+        }
+
+        keyboard.addView(row);
+    }
+
+    private void addSinhalaSignsRow() {
+
+        LinearLayout row =
+                createRow(48);
+
+        String[] signs = {
+                "ං",
+                "ඃ",
+                "්",
+                "ා",
+                "ැ",
+                "ෑ",
+                "ි",
+                "ී",
+                "ු",
+                "ූ"
+        };
+
+        for (String sign : signs) {
+
+            addSinhalaKey(
+                    row,
+                    sign
+            );
+        }
+
+        keyboard.addView(row);
+    }
+
+    private void addSinhalaKey(
+            LinearLayout row,
+            String value) {
+
+        Button button =
+                createKey(value, 1);
+
+        button.setTextSize(17);
+
+        button.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+
+                input.commitText(
+                        value,
+                        1
+                );
+
+                if (shiftOn) {
+                    shiftOn = false;
+                    refreshKeyboard();
+                }
+            }
+        });
+
+        row.addView(button);
+    }
+
+    // =====================================================
+    // SINHALA CONTROL ROW
+    // =====================================================
+
+    private void addSinhalaControlRow() {
+
+        LinearLayout row =
+                createRow(60);
+
+        Button shift =
+                createKey(
+                        shiftOn ? "↑" : "⇧",
+                        1.25f
+                );
+
+        Button numbers =
+                createKey(
+                        "123",
+                        1.15f
+                );
+
+        Button english =
+                createKey(
+                        "ABC",
+                        1.25f
+                );
+
+        Button emoji =
+                createKey(
+                        "😊",
+                        1.0f
+                );
+
+        Button space =
+                createKey(
+                        "SPACE",
+                        3.3f
+                );
+
+        Button enter =
+                createKey(
+                        "↵",
+                        1.35f
+                );
+
+        shift.setOnClickListener(v -> {
+
+            shiftOn = !shiftOn;
+            refreshKeyboard();
+        });
+
+        numbers.setOnClickListener(v -> {
+
+            numberMode = true;
+            emojiMode = false;
+
+            refreshKeyboard();
+        });
+
+        english.setOnClickListener(v -> {
+
+            sinhalaMode = false;
+            shiftOn = false;
+            capsLock = false;
+
+            numberMode = false;
+            emojiMode = false;
+
+            refreshKeyboard();
+        });
+
+        emoji.setOnClickListener(v -> {
+
+            emojiMode = true;
+            numberMode = false;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+                input.commitText(" ", 1);
+            }
+        });
+
+        enter.setOnClickListener(v -> {
+
+            InputConnection input =
+                    getCurrentInputConnection();
+
+            if (input != null) {
+
+                input.sendKeyEvent(
+                        new android.view.KeyEvent(
+                                android.view.KeyEvent.ACTION_DOWN,
+                                android.view.KeyEvent.KEYCODE_ENTER
+                        )
+                );
+            }
+        });
+
+        row.addView(shift);
+        row.addView(numbers);
+        row.addView(english);
+        row.addView(emoji);
+        row.addView(space);
+        row.addView(enter);
+
+        keyboard.addView(row);
     }
 
     // =====================================================
@@ -385,7 +610,7 @@ public class MagicboardService extends InputMethodService {
     }
 
     // =====================================================
-    // TEXT CONTROL ROW
+    // ENGLISH CONTROL ROW
     // =====================================================
 
     private void addControlRow() {
@@ -396,7 +621,7 @@ public class MagicboardService extends InputMethodService {
         Button numbers =
                 createKey(
                         "123",
-                        1.35f
+                        1.25f
                 );
 
         Button emoji =
@@ -405,16 +630,22 @@ public class MagicboardService extends InputMethodService {
                         1.0f
                 );
 
+        Button sinhala =
+                createKey(
+                        "සිං",
+                        1.25f
+                );
+
         Button space =
                 createKey(
                         "SPACE",
-                        4.3f
+                        3.3f
                 );
 
         Button enter =
                 createKey(
                         "↵",
-                        1.5f
+                        1.35f
                 );
 
         numbers.setOnClickListener(v -> {
@@ -429,6 +660,18 @@ public class MagicboardService extends InputMethodService {
 
             emojiMode = true;
             numberMode = false;
+
+            refreshKeyboard();
+        });
+
+        sinhala.setOnClickListener(v -> {
+
+            sinhalaMode = true;
+            shiftOn = false;
+            capsLock = false;
+
+            numberMode = false;
+            emojiMode = false;
 
             refreshKeyboard();
         });
@@ -461,6 +704,7 @@ public class MagicboardService extends InputMethodService {
 
         row.addView(numbers);
         row.addView(emoji);
+        row.addView(sinhala);
         row.addView(space);
         row.addView(enter);
 
@@ -481,7 +725,7 @@ public class MagicboardService extends InputMethodService {
 
         Button abc =
                 createKey(
-                        "ABC",
+                        sinhalaMode ? "සිං" : "ABC",
                         1.35f
                 );
 
@@ -761,7 +1005,7 @@ public class MagicboardService extends InputMethodService {
 
         Button abc =
                 createKey(
-                        "⌨ ABC",
+                        sinhalaMode ? "⌨ සිං" : "⌨ ABC",
                         1.5f
                 );
 
@@ -1074,6 +1318,10 @@ public class MagicboardService extends InputMethodService {
         } else if (numberMode) {
 
             buildNumberKeyboard();
+
+        } else if (sinhalaMode) {
+
+            buildSinhalaKeyboard();
 
         } else {
 
