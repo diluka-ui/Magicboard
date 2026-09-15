@@ -1,5 +1,6 @@
 package com.magicboard.keyboard;
 
+import android.animation.ValueAnimator;
 import android.inputmethodservice.InputMethodService;
 import android.view.View;
 import android.view.MotionEvent;
@@ -136,14 +137,18 @@ public class MagicboardService extends InputMethodService {
 
         try {
             Uri uri = Uri.parse(uriString);
+
             InputStream input =
                     getContentResolver().openInputStream(uri);
 
             if (input != null) {
+
                 backgroundBitmap =
                         BitmapFactory.decodeStream(input);
+
                 input.close();
             }
+
         } catch (Exception ignored) {
             backgroundBitmap = null;
         }
@@ -176,10 +181,13 @@ public class MagicboardService extends InputMethodService {
 
         if (emojiMode) {
             buildEmojiKeyboard();
+
         } else if (numberMode) {
             buildNumberKeyboard();
+
         } else if (sinhalaMode) {
             buildSinhalaKeyboard();
+
         } else {
             buildLetterKeyboard();
         }
@@ -188,9 +196,8 @@ public class MagicboardService extends InputMethodService {
     /*
      * BACKGROUND
      *
-     * Bitmap is drawn with CENTER_CROP behavior:
-     * the whole keyboard is covered while preserving
-     * the original photo aspect ratio.
+     * The selected photo fills the complete keyboard
+     * area while preserving its original aspect ratio.
      */
 
     private void applyKeyboardBackground() {
@@ -215,6 +222,7 @@ public class MagicboardService extends InputMethodService {
             extends android.graphics.drawable.Drawable {
 
         private final Bitmap bitmap;
+
         private final android.graphics.Paint paint =
                 new android.graphics.Paint(
                         android.graphics.Paint.ANTI_ALIAS_FLAG |
@@ -325,15 +333,26 @@ public class MagicboardService extends InputMethodService {
                 new Button(this);
 
         button.setText(text);
-        button.setTextColor(Color.WHITE);
+
+        button.setTextColor(
+                Color.WHITE
+        );
+
         button.setTextSize(15);
+
         button.setAllCaps(false);
 
         button.setGravity(
                 Gravity.CENTER
         );
 
-        button.setPadding(0, 0, 0, 0);
+        button.setPadding(
+                0,
+                0,
+                0,
+                0
+        );
+
         button.setMinWidth(0);
         button.setMinHeight(0);
 
@@ -357,33 +376,59 @@ public class MagicboardService extends InputMethodService {
 
         attachTouchAnimation(button);
 
+        if (animatedBorder) {
+            startBorderAnimation(button);
+        }
+
         return button;
     }
 
+    /*
+     * KEY STYLE
+     *
+     * When a background photo exists:
+     * key fill becomes completely transparent.
+     *
+     * This lets the selected photo remain clearly visible
+     * behind the letters.
+     */
+
     private void applyKeyStyle(Button button) {
-
-        int alpha =
-                (int)(
-                        255f *
-                        (keyTransparency / 100f)
-                );
-
-        alpha = Math.max(
-                0,
-                Math.min(255, alpha)
-        );
 
         GradientDrawable background =
                 new GradientDrawable();
 
-        background.setColor(
-                Color.argb(
-                        alpha,
-                        24,
-                        24,
-                        24
-                )
-        );
+        if (backgroundBitmap != null) {
+
+            background.setColor(
+                    Color.TRANSPARENT
+            );
+
+        } else {
+
+            int alpha =
+                    (int)(
+                            255f *
+                            (keyTransparency / 100f)
+                    );
+
+            alpha = Math.max(
+                    0,
+                    Math.min(
+                            255,
+                            alpha
+                    )
+            );
+
+            background.setColor(
+                    Color.argb(
+                            alpha,
+                            24,
+                            24,
+                            24
+                    )
+            );
+        }
 
         background.setStroke(
                 dp(1),
@@ -401,13 +446,125 @@ public class MagicboardService extends InputMethodService {
         button.setBackground(
                 background
         );
+
+        button.setTextColor(
+                Color.WHITE
+        );
     }
 
     /*
-     * FIXED LIQUID TOUCH
+     * MOVING BORDER ANIMATION
      *
-     * A Button is not a ViewGroup.
-     * Therefore the old ViewGroup cast is removed.
+     * The border continuously changes intensity
+     * around each key.
+     */
+
+    private void startBorderAnimation(
+            final Button button
+    ) {
+
+        if (!animatedBorder) {
+            return;
+        }
+
+        final int normalColor =
+                Color.rgb(
+                        0,
+                        255,
+                        100
+                );
+
+        final int brightColor =
+                Color.rgb(
+                        120,
+                        255,
+                        180
+                );
+
+        ValueAnimator animator =
+                ValueAnimator.ofArgb(
+                        normalColor,
+                        brightColor,
+                        normalColor
+                );
+
+        animator.setDuration(1800);
+        animator.setRepeatCount(
+                ValueAnimator.INFINITE
+        );
+
+        animator.addUpdateListener(
+                new ValueAnimator.AnimatorUpdateListener() {
+
+                    @Override
+                    public void onAnimationUpdate(
+                            ValueAnimator animation
+                    ) {
+
+                        if (button.getParent() == null) {
+                            animation.cancel();
+                            return;
+                        }
+
+                        int color =
+                                (Integer)
+                                        animation.getAnimatedValue();
+
+                        GradientDrawable drawable =
+                                new GradientDrawable();
+
+                        if (backgroundBitmap != null) {
+
+                            drawable.setColor(
+                                    Color.TRANSPARENT
+                            );
+
+                        } else {
+
+                            int alpha =
+                                    (int)(
+                                            255f *
+                                            (
+                                                    keyTransparency
+                                                            / 100f
+                                            )
+                                    );
+
+                            drawable.setColor(
+                                    Color.argb(
+                                            alpha,
+                                            24,
+                                            24,
+                                            24
+                                    )
+                            );
+                        }
+
+                        drawable.setStroke(
+                                dp(1),
+                                color
+                        );
+
+                        drawable.setCornerRadius(
+                                dp(cornerRadius)
+                        );
+
+                        button.setBackground(
+                                drawable
+                        );
+                    }
+                }
+        );
+
+        button.setTag(
+                animator
+        );
+
+        animator.start();
+    }
+
+    /*
+     * LIQUID TOUCH
      */
 
     private void attachTouchAnimation(
@@ -431,6 +588,7 @@ public class MagicboardService extends InputMethodService {
                                 MotionEvent.ACTION_DOWN) {
 
                             if (liquidTouch) {
+
                                 button.animate()
                                         .scaleX(0.94f)
                                         .scaleY(0.94f)
@@ -440,16 +598,53 @@ public class MagicboardService extends InputMethodService {
                             }
 
                             if (animatedBorder) {
-                                GradientDrawable active =
-                                        createAnimatedBorder(
-                                                Color.rgb(
-                                                        120,
-                                                        255,
-                                                        180
-                                                )
-                                        );
 
-                                button.setBackground(active);
+                                GradientDrawable active =
+                                        new GradientDrawable();
+
+                                if (backgroundBitmap != null) {
+
+                                    active.setColor(
+                                            Color.TRANSPARENT
+                                    );
+
+                                } else {
+
+                                    int alpha =
+                                            (int)(
+                                                    255f *
+                                                    (
+                                                            keyTransparency
+                                                                    / 100f
+                                                    )
+                                            );
+
+                                    active.setColor(
+                                            Color.argb(
+                                                    alpha,
+                                                    24,
+                                                    24,
+                                                    24
+                                            )
+                                    );
+                                }
+
+                                active.setStroke(
+                                        dp(2),
+                                        Color.rgb(
+                                                120,
+                                                255,
+                                                180
+                                        )
+                                );
+
+                                active.setCornerRadius(
+                                        dp(cornerRadius)
+                                );
+
+                                button.setBackground(
+                                        active
+                                );
                             }
 
                         } else if (
@@ -465,58 +660,12 @@ public class MagicboardService extends InputMethodService {
                                     .alpha(1f)
                                     .setDuration(150)
                                     .start();
-
-                            if (animatedBorder) {
-                                button.postDelayed(
-                                        new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                applyKeyStyle(button);
-                                            }
-                                        },
-                                        120
-                                );
-                            }
                         }
 
                         return false;
                     }
                 }
         );
-    }
-
-    private GradientDrawable createAnimatedBorder(
-            int borderColor
-    ) {
-
-        int alpha =
-                (int)(
-                        255f *
-                        (keyTransparency / 100f)
-                );
-
-        GradientDrawable drawable =
-                new GradientDrawable();
-
-        drawable.setColor(
-                Color.argb(
-                        alpha,
-                        24,
-                        24,
-                        24
-                )
-        );
-
-        drawable.setStroke(
-                dp(2),
-                borderColor
-        );
-
-        drawable.setCornerRadius(
-                dp(cornerRadius)
-        );
-
-        return drawable;
     }
 
     /*
@@ -548,7 +697,9 @@ public class MagicboardService extends InputMethodService {
         addControlRow();
     }
 
-    private void addLetterRow(String letters) {
+    private void addLetterRow(
+            String letters
+    ) {
 
         LinearLayout row =
                 createRow(60);
@@ -618,7 +769,9 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    private void addShift(LinearLayout row) {
+    private void addShift(
+            LinearLayout row
+    ) {
 
         String text =
                 capsLock
@@ -1332,9 +1485,13 @@ public class MagicboardService extends InputMethodService {
             refreshKeyboard();
         });
 
-        space.setOnClickListener(v -> commit(" "));
+        space.setOnClickListener(
+                v -> commit(" ")
+        );
 
-        enter.setOnClickListener(v -> sendEnter());
+        enter.setOnClickListener(
+                v -> sendEnter()
+        );
 
         row.addView(numbers);
         row.addView(emoji);
@@ -1552,12 +1709,15 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
-    private void commit(String value) {
+    private void commit(
+            String value
+    ) {
 
         InputConnection input =
                 getCurrentInputConnection();
 
         if (input != null) {
+
             input.commitText(
                     value,
                     1
@@ -1571,6 +1731,7 @@ public class MagicboardService extends InputMethodService {
                 getCurrentInputConnection();
 
         if (input != null) {
+
             input.deleteSurroundingText(
                     1,
                     0
@@ -1607,16 +1768,25 @@ public class MagicboardService extends InputMethodService {
         loadStyleSettings();
 
         if (keyboard != null) {
+
             keyboard.removeAllViews();
+
             applyKeyboardBackground();
 
             if (emojiMode) {
+
                 buildEmojiKeyboard();
+
             } else if (numberMode) {
+
                 buildNumberKeyboard();
+
             } else if (sinhalaMode) {
+
                 buildSinhalaKeyboard();
+
             } else {
+
                 buildLetterKeyboard();
             }
         }
