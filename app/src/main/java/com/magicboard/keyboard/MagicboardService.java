@@ -1622,4 +1622,3 @@ public class MagicboardService extends InputMethodService {
         }
     }
 }
-```0
