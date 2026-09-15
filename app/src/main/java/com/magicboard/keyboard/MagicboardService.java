@@ -38,6 +38,7 @@ public class MagicboardService extends InputMethodService {
     private int keyboardBackgroundColor;
     private int keyTransparency;
     private int cornerRadius;
+    private int letterColor;
     private boolean liquidTouch;
     private boolean animatedBorder;
 
@@ -47,6 +48,7 @@ public class MagicboardService extends InputMethodService {
         @Override
         public void run() {
             InputConnection input = getCurrentInputConnection();
+
             if (input != null) {
                 input.deleteSurroundingText(1, 0);
                 deleteHandler.postDelayed(this, 70);
@@ -73,11 +75,14 @@ public class MagicboardService extends InputMethodService {
             boolean restarting
     ) {
         super.onStartInput(attribute, restarting);
+
         sinhalaBuffer = "";
+
         loadStyleSettings();
     }
 
     private void loadStyleSettings() {
+
         stylePrefs = getSharedPreferences(
                 "MagicboardStyle",
                 MODE_PRIVATE
@@ -110,6 +115,11 @@ public class MagicboardService extends InputMethodService {
                 )
         );
 
+        letterColor = stylePrefs.getInt(
+                "letterColor",
+                Color.WHITE
+        );
+
         liquidTouch = stylePrefs.getBoolean(
                 "liquidTouch",
                 true
@@ -124,6 +134,7 @@ public class MagicboardService extends InputMethodService {
     }
 
     private void loadBackgroundImage() {
+
         backgroundBitmap = null;
 
         String uriString = stylePrefs.getString(
@@ -131,11 +142,13 @@ public class MagicboardService extends InputMethodService {
                 ""
         );
 
-        if (uriString == null || uriString.length() == 0) {
+        if (uriString == null ||
+                uriString.length() == 0) {
             return;
         }
 
         try {
+
             Uri uri = Uri.parse(uriString);
 
             InputStream input =
@@ -150,6 +163,7 @@ public class MagicboardService extends InputMethodService {
             }
 
         } catch (Exception ignored) {
+
             backgroundBitmap = null;
         }
     }
@@ -180,25 +194,22 @@ public class MagicboardService extends InputMethodService {
         applyKeyboardBackground();
 
         if (emojiMode) {
+
             buildEmojiKeyboard();
 
         } else if (numberMode) {
+
             buildNumberKeyboard();
 
         } else if (sinhalaMode) {
+
             buildSinhalaKeyboard();
 
         } else {
+
             buildLetterKeyboard();
         }
     }
-
-    /*
-     * BACKGROUND
-     *
-     * The selected photo fills the complete keyboard
-     * area while preserving its original aspect ratio.
-     */
 
     private void applyKeyboardBackground() {
 
@@ -243,12 +254,16 @@ public class MagicboardService extends InputMethodService {
             int viewWidth = getBounds().width();
             int viewHeight = getBounds().height();
 
-            if (viewWidth <= 0 || viewHeight <= 0) {
+            if (viewWidth <= 0 ||
+                    viewHeight <= 0) {
                 return;
             }
 
-            float bitmapWidth = bitmap.getWidth();
-            float bitmapHeight = bitmap.getHeight();
+            float bitmapWidth =
+                    bitmap.getWidth();
+
+            float bitmapHeight =
+                    bitmap.getHeight();
 
             float scale = Math.max(
                     viewWidth / bitmapWidth,
@@ -335,7 +350,7 @@ public class MagicboardService extends InputMethodService {
         button.setText(text);
 
         button.setTextColor(
-                Color.WHITE
+                letterColor
         );
 
         button.setTextSize(15);
@@ -382,16 +397,6 @@ public class MagicboardService extends InputMethodService {
 
         return button;
     }
-
-    /*
-     * KEY STYLE
-     *
-     * When a background photo exists:
-     * key fill becomes completely transparent.
-     *
-     * This lets the selected photo remain clearly visible
-     * behind the letters.
-     */
 
     private void applyKeyStyle(Button button) {
 
@@ -448,16 +453,9 @@ public class MagicboardService extends InputMethodService {
         );
 
         button.setTextColor(
-                Color.WHITE
+                letterColor
         );
     }
-
-    /*
-     * MOVING BORDER ANIMATION
-     *
-     * The border continuously changes intensity
-     * around each key.
-     */
 
     private void startBorderAnimation(
             final Button button
@@ -489,6 +487,7 @@ public class MagicboardService extends InputMethodService {
                 );
 
         animator.setDuration(1800);
+
         animator.setRepeatCount(
                 ValueAnimator.INFINITE
         );
@@ -502,7 +501,9 @@ public class MagicboardService extends InputMethodService {
                     ) {
 
                         if (button.getParent() == null) {
+
                             animation.cancel();
+
                             return;
                         }
 
@@ -552,6 +553,10 @@ public class MagicboardService extends InputMethodService {
                         button.setBackground(
                                 drawable
                         );
+
+                        button.setTextColor(
+                                letterColor
+                        );
                     }
                 }
         );
@@ -563,15 +568,12 @@ public class MagicboardService extends InputMethodService {
         animator.start();
     }
 
-    /*
-     * LIQUID TOUCH
-     */
-
     private void attachTouchAnimation(
             final Button button
     ) {
 
-        if (!liquidTouch && !animatedBorder) {
+        if (!liquidTouch &&
+                !animatedBorder) {
             return;
         }
 
@@ -645,6 +647,10 @@ public class MagicboardService extends InputMethodService {
                                 button.setBackground(
                                         active
                                 );
+
+                                button.setTextColor(
+                                        letterColor
+                                );
                             }
 
                         } else if (
@@ -667,10 +673,6 @@ public class MagicboardService extends InputMethodService {
                 }
         );
     }
-
-    /*
-     * ENGLISH
-     */
 
     private void buildLetterKeyboard() {
 
@@ -761,7 +763,9 @@ public class MagicboardService extends InputMethodService {
             );
 
             if (shiftOn && !capsLock) {
+
                 shiftOn = false;
+
                 refreshKeyboard();
             }
         });
@@ -800,9 +804,12 @@ public class MagicboardService extends InputMethodService {
                 lastShiftTap = now;
 
                 if (capsLock) {
+
                     capsLock = false;
                     shiftOn = false;
+
                 } else {
+
                     shiftOn = !shiftOn;
                 }
             }
@@ -866,10 +873,6 @@ public class MagicboardService extends InputMethodService {
 
         row.addView(button);
     }
-
-    /*
-     * SINHALA PHONETIC
-     */
 
     private void buildSinhalaKeyboard() {
 
@@ -949,7 +952,9 @@ public class MagicboardService extends InputMethodService {
             );
 
             if (shiftOn && !capsLock) {
+
                 shiftOn = false;
+
                 refreshKeyboard();
             }
         });
@@ -988,9 +993,12 @@ public class MagicboardService extends InputMethodService {
                 lastShiftTap = now;
 
                 if (capsLock) {
+
                     capsLock = false;
                     shiftOn = false;
+
                 } else {
+
                     shiftOn = !shiftOn;
                 }
             }
@@ -1125,10 +1133,6 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
     }
-
-    /*
-     * PHONETIC ENGINE
-     */
 
     private void commitSinhalaPhonetic(
             String roman
@@ -1431,10 +1435,6 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
-    /*
-     * CONTROLS
-     */
-
     private void addControlRow() {
 
         LinearLayout row =
@@ -1501,10 +1501,6 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
     }
-
-    /*
-     * NUMBERS
-     */
 
     private void buildNumberKeyboard() {
 
@@ -1600,10 +1596,6 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
     }
-
-    /*
-     * EMOJI
-     */
 
     private void buildEmojiKeyboard() {
 
