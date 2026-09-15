@@ -9,11 +9,12 @@ import android.widget.Button;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Handler;
+import android.view.ViewGroup;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -39,9 +40,12 @@ public class MagicboardService extends InputMethodService {
 
     private final Handler deleteHandler = new Handler();
 
-    private String sinhalaPhoneticBuffer = "";
+    /* =========================
+       SINHALA PHONETIC STATE
+       ========================= */
 
-    private LinearLayout suggestionRow;
+    private String sinhalaBuffer = "";
+    private LinearLayout sinhalaSuggestions;
 
     private final Runnable deleteRunnable = new Runnable() {
         @Override
@@ -50,16 +54,13 @@ public class MagicboardService extends InputMethodService {
 
             if (input == null) return;
 
-            if (sinhalaMode &&
-                    sinhalaPhoneticBuffer.length() > 0) {
-
-                removeLastPhoneticPart();
+            if (sinhalaMode && !sinhalaBuffer.isEmpty()) {
+                deleteLastPhoneticUnit();
                 updateSinhalaComposition();
 
-                if (sinhalaPhoneticBuffer.length() > 0) {
+                if (!sinhalaBuffer.isEmpty()) {
                     deleteHandler.postDelayed(this, 70);
                 }
-
             } else {
                 input.deleteSurroundingText(1, 0);
                 deleteHandler.postDelayed(this, 70);
@@ -86,16 +87,9 @@ public class MagicboardService extends InputMethodService {
         keyboard = new LinearLayout(this);
         keyboard.setOrientation(LinearLayout.VERTICAL);
         keyboard.setGravity(Gravity.CENTER);
-        keyboard.setPadding(
-                dp(2),
-                dp(2),
-                dp(2),
-                dp(3)
-        );
+        keyboard.setPadding(dp(3), dp(3), dp(3), dp(4));
         keyboard.setBackgroundColor(Color.BLACK);
-        keyboard.setMinimumHeight(
-                dp(KEYBOARD_CONTENT_HEIGHT + 7)
-        );
+        keyboard.setMinimumHeight(dp(KEYBOARD_CONTENT_HEIGHT + 7));
 
         if (emojiMode) {
             buildEmojiKeyboard();
@@ -112,13 +106,8 @@ public class MagicboardService extends InputMethodService {
 
         LinearLayout row = new LinearLayout(this);
 
-        row.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
-        row.setGravity(
-                Gravity.CENTER
-        );
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
 
         row.setLayoutParams(
                 new LinearLayout.LayoutParams(
@@ -130,10 +119,7 @@ public class MagicboardService extends InputMethodService {
         return row;
     }
 
-    private Button createKey(
-            String text,
-            float weight
-    ) {
+    private Button createKey(String text, float weight) {
 
         Button button = new Button(this);
 
@@ -142,13 +128,8 @@ public class MagicboardService extends InputMethodService {
         button.setTextSize(15);
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
-        button.setIncludeFontPadding(false);
-        button.setPadding(
-                dp(1),
-                0,
-                dp(1),
-                0
-        );
+        button.setIncludeFontPadding(true);
+        button.setPadding(0, 0, 0, 0);
 
         GradientDrawable background =
                 new GradientDrawable();
@@ -163,24 +144,22 @@ public class MagicboardService extends InputMethodService {
         );
 
         background.setCornerRadius(
-                dp(7)
+                dp(8)
         );
 
-        button.setBackground(
-                background
-        );
+        button.setBackground(background);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         0,
-                        dp(44),
+                        dp(56),
                         weight
                 );
 
         params.setMargins(
-                dp(1),
                 dp(2),
-                dp(1),
+                dp(2),
+                dp(2),
                 dp(2)
         );
 
@@ -189,9 +168,9 @@ public class MagicboardService extends InputMethodService {
         return button;
     }
 
-    /* =========================================================
-       ENGLISH
-       ========================================================= */
+    /* =====================================================
+       ENGLISH KEYBOARD
+       ===================================================== */
 
     private void buildLetterKeyboard() {
 
@@ -264,10 +243,7 @@ public class MagicboardService extends InputMethodService {
                                 ? letter.toUpperCase()
                                 : letter.toLowerCase();
 
-                input.commitText(
-                        value,
-                        1
-                );
+                input.commitText(value, 1);
 
                 if (shiftOn && !capsLock) {
                     shiftOn = false;
@@ -279,102 +255,49 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    /* =========================================================
-       SINHALA
-       ========================================================= */
+    /* =====================================================
+       SINHALA KEYBOARD
+       ===================================================== */
 
     private void buildSinhalaKeyboard() {
 
         /*
-         * EXACT SAME GENERAL HEIGHT
+         * Same keyboard height.
          *
-         * Suggestions 36
-         * Row 1      48
-         * Row 2      48
-         * Row 3      48
-         * Controls   60
+         * Suggestion bar = 36
+         * Sinhala rows   = 48 x 3
+         * Control row    = 60
          *
-         * Total = 240
+         * 36 + 144 + 60 = 240
          */
 
         buildSinhalaSuggestionBar();
 
-        addSinhalaKeyRow(
+        /*
+         * NORMAL PHONETIC QWERTY
+         *
+         * Keys are phonetic.
+         * The Sinhala result appears while typing.
+         */
+
+        addSinhalaPhoneticRow(
                 new String[]{
-                        "අ",
-                        "ආ",
-                        "ඇ",
-                        "ඈ",
-                        "ඉ",
-                        "ඊ",
-                        "උ",
-                        "ඌ",
-                        "එ",
-                        "ඒ"
-                },
-                new String[]{
-                        "a",
-                        "aa",
-                        "ae",
-                        "aae",
-                        "i",
-                        "ii",
-                        "u",
-                        "uu",
-                        "e",
-                        "ee"
+                        "q", "w", "e", "r", "t",
+                        "y", "u", "i", "o", "p"
                 }
         );
 
-        addSinhalaKeyRow(
+        addSinhalaPhoneticRow(
                 new String[]{
-                        "ක",
-                        "ග",
-                        "ච",
-                        "ජ",
-                        "ට",
-                        "ඩ",
-                        "ත",
-                        "ද",
-                        "න",
-                        "ප"
-                },
-                new String[]{
-                        "k",
-                        "g",
-                        "c",
-                        "j",
-                        "tt",
-                        "dd",
-                        "t",
-                        "d",
-                        "n",
-                        "p"
+                        "a", "s", "d", "f", "g",
+                        "h", "j", "k", "l"
                 }
         );
 
-        addSinhalaKeyRow(
+        addSinhalaPhoneticRow(
                 new String[]{
-                        "බ",
-                        "ම",
-                        "ය",
-                        "ර",
-                        "ල",
-                        "ව",
-                        "ස",
-                        "හ",
-                        "ෆ"
-                },
-                new String[]{
-                        "b",
-                        "m",
-                        "y",
-                        "r",
-                        "l",
-                        "v",
-                        "s",
-                        "h",
-                        "f"
+                        "z", "x", "c", "v", "b",
+                        "n", "m"
                 }
         );
 
@@ -383,25 +306,25 @@ public class MagicboardService extends InputMethodService {
 
     private void buildSinhalaSuggestionBar() {
 
-        suggestionRow =
+        sinhalaSuggestions =
                 new LinearLayout(this);
 
-        suggestionRow.setOrientation(
+        sinhalaSuggestions.setOrientation(
                 LinearLayout.HORIZONTAL
         );
 
-        suggestionRow.setGravity(
+        sinhalaSuggestions.setGravity(
                 Gravity.CENTER
         );
 
-        suggestionRow.setPadding(
-                dp(1),
+        sinhalaSuggestions.setPadding(
+                dp(2),
                 0,
-                dp(1),
+                dp(2),
                 0
         );
 
-        suggestionRow.setLayoutParams(
+        sinhalaSuggestions.setLayoutParams(
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         dp(36)
@@ -409,111 +332,32 @@ public class MagicboardService extends InputMethodService {
         );
 
         keyboard.addView(
-                suggestionRow
+                sinhalaSuggestions
         );
 
-        refreshSinhalaSuggestions();
+        updateSinhalaSuggestions();
     }
 
-    private void refreshSinhalaSuggestions() {
-
-        if (suggestionRow == null) return;
-
-        suggestionRow.removeAllViews();
-
-        List<String> suggestions =
-                getSinhalaSuggestions(
-                        sinhalaPhoneticBuffer
-                );
-
-        for (String word : suggestions) {
-
-            Button button =
-                    new Button(this);
-
-            button.setText(word);
-            button.setTextColor(Color.WHITE);
-            button.setTextSize(14);
-            button.setAllCaps(false);
-            button.setGravity(Gravity.CENTER);
-            button.setIncludeFontPadding(false);
-            button.setPadding(
-                    dp(2),
-                    0,
-                    dp(2),
-                    0
-            );
-
-            GradientDrawable bg =
-                    new GradientDrawable();
-
-            bg.setColor(
-                    Color.rgb(18, 18, 18)
-            );
-
-            bg.setStroke(
-                    dp(1),
-                    Color.rgb(0, 180, 80)
-            );
-
-            bg.setCornerRadius(
-                    dp(6)
-            );
-
-            button.setBackground(bg);
-
-            LinearLayout.LayoutParams params =
-                    new LinearLayout.LayoutParams(
-                            0,
-                            dp(32),
-                            1
-                    );
-
-            params.setMargins(
-                    dp(2),
-                    dp(1),
-                    dp(2),
-                    dp(1)
-            );
-
-            button.setLayoutParams(params);
-
-            button.setOnClickListener(v ->
-                    commitSinhalaSuggestion(word)
-            );
-
-            suggestionRow.addView(button);
-        }
-    }
-
-    private void addSinhalaKeyRow(
-            String[] labels,
-            String[] phonetics
+    private void addSinhalaPhoneticRow(
+            String[] keys
     ) {
 
         LinearLayout row =
                 createRow(48);
 
-        for (int i = 0;
-             i < labels.length;
-             i++) {
-
-            String label = labels[i];
-            String phonetic = phonetics[i];
+        for (String key : keys) {
 
             Button button =
                     createKey(
-                            label,
+                            key.toUpperCase(),
                             1
                     );
 
-            button.setTextSize(18);
-            button.setIncludeFontPadding(true);
+            button.setTextSize(15);
 
             button.setOnClickListener(v -> {
 
-                sinhalaPhoneticBuffer +=
-                        phonetic;
+                sinhalaBuffer += key;
 
                 updateSinhalaComposition();
             });
@@ -565,6 +409,12 @@ public class MagicboardService extends InputMethodService {
                         1.15f
                 );
 
+        Button backspace =
+                createKey(
+                        "⌫",
+                        1.0f
+                );
+
         shift.setOnClickListener(v -> {
 
             shiftOn = !shiftOn;
@@ -587,10 +437,11 @@ public class MagicboardService extends InputMethodService {
             finishSinhalaComposition();
 
             sinhalaMode = false;
-            shiftOn = false;
-            capsLock = false;
             numberMode = false;
             emojiMode = false;
+
+            shiftOn = false;
+            capsLock = false;
 
             refreshKeyboard();
         });
@@ -614,12 +465,9 @@ public class MagicboardService extends InputMethodService {
 
             finishSinhalaComposition();
 
-            input.commitText(
-                    " ",
-                    1
-            );
+            input.commitText(" ", 1);
 
-            refreshSinhalaSuggestions();
+            updateSinhalaSuggestions();
         });
 
         enter.setOnClickListener(v -> {
@@ -637,9 +485,40 @@ public class MagicboardService extends InputMethodService {
                             android.view.KeyEvent.KEYCODE_ENTER
                     )
             );
-
-            refreshSinhalaSuggestions();
         });
+
+        backspace.setOnTouchListener(
+                (v, event) -> {
+
+                    if (event.getAction()
+                            == MotionEvent.ACTION_DOWN) {
+
+                        deleteOne();
+
+                        deleteHandler.postDelayed(
+                                deleteRunnable,
+                                450
+                        );
+
+                        return true;
+                    }
+
+                    if (event.getAction()
+                            == MotionEvent.ACTION_UP
+                            ||
+                            event.getAction()
+                                    == MotionEvent.ACTION_CANCEL) {
+
+                        deleteHandler.removeCallbacks(
+                                deleteRunnable
+                        );
+
+                        return true;
+                    }
+
+                    return true;
+                }
+        );
 
         row.addView(shift);
         row.addView(numbers);
@@ -647,13 +526,14 @@ public class MagicboardService extends InputMethodService {
         row.addView(emoji);
         row.addView(space);
         row.addView(enter);
+        row.addView(backspace);
 
         keyboard.addView(row);
     }
 
-    /* =========================================================
-       SINHALA PHONETIC ENGINE
-       ========================================================= */
+    /* =====================================================
+       SINHALA TRANSLITERATION
+       ===================================================== */
 
     private static final Map<String, String>
             CONSONANTS =
@@ -670,8 +550,8 @@ public class MagicboardService extends InputMethodService {
         CONSONANTS.put("ch", "ඡ");
         CONSONANTS.put("jh", "ඣ");
 
-        CONSONANTS.put("th", "ථ");
         CONSONANTS.put("dh", "ධ");
+        CONSONANTS.put("th", "ථ");
 
         CONSONANTS.put("ph", "ඵ");
         CONSONANTS.put("bh", "භ");
@@ -708,19 +588,24 @@ public class MagicboardService extends InputMethodService {
 
         CONSONANTS.put("s", "ස");
         CONSONANTS.put("h", "හ");
+
         CONSONANTS.put("f", "ෆ");
     }
 
     private static final String[] VOWELS = {
+
             "aae",
             "aa",
             "ae",
+
             "ii",
             "uu",
             "ee",
+
             "ai",
             "oo",
             "au",
+
             "a",
             "i",
             "u",
@@ -733,7 +618,8 @@ public class MagicboardService extends InputMethodService {
             int position
     ) {
 
-        for (String key : CONSONANTS.keySet()) {
+        for (String key :
+                CONSONANTS.keySet()) {
 
             if (text.startsWith(
                     key,
@@ -751,7 +637,8 @@ public class MagicboardService extends InputMethodService {
             int position
     ) {
 
-        for (String vowel : VOWELS) {
+        for (String vowel :
+                VOWELS) {
 
             if (text.startsWith(
                     vowel,
@@ -811,9 +698,10 @@ public class MagicboardService extends InputMethodService {
 
             case "au":
                 return "ඖ";
-        }
 
-        return "";
+            default:
+                return "";
+        }
     }
 
     private String vowelMark(
@@ -863,9 +751,10 @@ public class MagicboardService extends InputMethodService {
 
             case "au":
                 return "ෞ";
-        }
 
-        return "";
+            default:
+                return "";
+        }
     }
 
     private String transliterateSinhala(
@@ -873,7 +762,7 @@ public class MagicboardService extends InputMethodService {
     ) {
 
         if (text == null ||
-                text.length() == 0) {
+                text.isEmpty()) {
             return "";
         }
 
@@ -901,23 +790,26 @@ public class MagicboardService extends InputMethodService {
                         i + consonant.length();
 
                 /*
-                 * consonant + r + vowel
+                 * r cluster
                  *
-                 * kra = ක්‍ර
-                 * kri = ක්‍රි
-                 * kru = ක්‍රු
+                 * kra -> ක්‍ර
+                 * kri -> ක්‍රි
+                 * kru -> ක්‍රු
+                 * kre -> ක්‍රෙ
                  */
 
-                if (after < text.length() &&
-                        text.charAt(after) == 'r') {
+                if (after < text.length()
+                        &&
+                        text.charAt(after)
+                                == 'r') {
 
-                    int vowelPosition =
+                    int vowelPos =
                             after + 1;
 
                     String vowel =
                             findVowel(
                                     text,
-                                    vowelPosition
+                                    vowelPos
                             );
 
                     if (vowel != null) {
@@ -929,19 +821,55 @@ public class MagicboardService extends InputMethodService {
                         );
 
                         i =
-                                vowelPosition
+                                vowelPos
                                         + vowel.length();
 
                         continue;
                     }
 
-                    if (vowelPosition >=
+                    if (vowelPos >=
                             text.length()) {
 
                         result.append(base);
                         result.append("්ර");
 
-                        i = vowelPosition;
+                        i = vowelPos;
+
+                        continue;
+                    }
+                }
+
+                /*
+                 * y cluster
+                 *
+                 * kya -> ක්‍ය
+                 */
+
+                if (after < text.length()
+                        &&
+                        text.charAt(after)
+                                == 'y') {
+
+                    int vowelPos =
+                            after + 1;
+
+                    String vowel =
+                            findVowel(
+                                    text,
+                                    vowelPos
+                            );
+
+                    if (vowel != null) {
+
+                        result.append(base);
+                        result.append("්ය");
+                        result.append(
+                                vowelMark(vowel)
+                        );
+
+                        i =
+                                vowelPos
+                                        + vowel.length();
 
                         continue;
                     }
@@ -960,6 +888,7 @@ public class MagicboardService extends InputMethodService {
                 if (vowel != null) {
 
                     result.append(base);
+
                     result.append(
                             vowelMark(vowel)
                     );
@@ -973,9 +902,6 @@ public class MagicboardService extends InputMethodService {
 
                 /*
                  * consonant + consonant
-                 *
-                 * kk = ක්ක
-                 * kr = ක්‍ර
                  */
 
                 if (after < text.length()) {
@@ -1034,6 +960,10 @@ public class MagicboardService extends InputMethodService {
         return result.toString();
     }
 
+    /* =====================================================
+       SINHALA COMPOSING
+       ===================================================== */
+
     private void updateSinhalaComposition() {
 
         InputConnection input =
@@ -1043,7 +973,7 @@ public class MagicboardService extends InputMethodService {
 
         String converted =
                 transliterateSinhala(
-                        sinhalaPhoneticBuffer
+                        sinhalaBuffer
                 );
 
         input.setComposingText(
@@ -1051,7 +981,7 @@ public class MagicboardService extends InputMethodService {
                 1
         );
 
-        refreshSinhalaSuggestions();
+        updateSinhalaSuggestions();
     }
 
     private void finishSinhalaComposition() {
@@ -1061,11 +991,11 @@ public class MagicboardService extends InputMethodService {
 
         if (input == null) return;
 
-        if (sinhalaPhoneticBuffer.length() > 0) {
+        if (!sinhalaBuffer.isEmpty()) {
 
             String converted =
                     transliterateSinhala(
-                            sinhalaPhoneticBuffer
+                            sinhalaBuffer
                     );
 
             input.setComposingText(
@@ -1076,9 +1006,295 @@ public class MagicboardService extends InputMethodService {
             input.finishComposingText();
         }
 
-        sinhalaPhoneticBuffer = "";
+        sinhalaBuffer = "";
 
-        refreshSinhalaSuggestions();
+        updateSinhalaSuggestions();
+    }
+
+    /* =====================================================
+       SINHALA SUGGESTIONS
+       ===================================================== */
+
+    private static final String[] SINHALA_WORDS = {
+
+            "මම",
+            "මගේ",
+            "මට",
+            "මාව",
+
+            "අපි",
+            "අපේ",
+            "අපට",
+
+            "ඔයා",
+            "ඔයාගේ",
+            "ඔයාට",
+
+            "ඔබ",
+            "ඔබේ",
+            "ඔහු",
+            "ඇය",
+
+            "අද",
+            "හෙට",
+            "ඊයේ",
+            "දැන්",
+
+            "හරි",
+            "හොඳ",
+            "හොඳයි",
+            "ඔව්",
+            "නැහැ",
+            "බැහැ",
+
+            "කරන්න",
+            "කරනවා",
+            "කරමු",
+            "කරන්නම්",
+            "කරලා",
+            "කළා",
+
+            "දෙන්න",
+            "දෙනවා",
+            "ගන්න",
+            "ගන්නවා",
+
+            "යන්න",
+            "යනවා",
+            "ගියා",
+
+            "එන්න",
+            "එනවා",
+            "ආවා",
+
+            "කියන්න",
+            "කියනවා",
+            "කියලා",
+
+            "දන්නවා",
+            "දන්නේ",
+
+            "බලන්න",
+            "බලමු",
+            "බලනවා",
+
+            "අහන්න",
+            "අහනවා",
+
+            "හිතන්න",
+            "හිතනවා",
+
+            "ඉගෙනගන්න",
+            "ඉගෙනීම",
+
+            "පුළුවන්",
+            "පුළුවන්ද",
+
+            "මොකද",
+            "මොකක්",
+            "මොකද්ද",
+
+            "කොහොමද",
+            "කොහෙද",
+            "කවුද",
+            "ඇයි",
+
+            "මෙතන",
+            "එතන",
+
+            "ගෙදර",
+            "පාසල",
+            "පන්තිය",
+
+            "යාලුවා",
+            "යාලුවෝ",
+            "මිතුරා",
+
+            "අම්මා",
+            "තාත්තා",
+            "අයියා",
+            "අක්කා",
+            "මල්ලි",
+            "නංගි",
+
+            "කෑම",
+            "වතුර",
+            "තේ",
+            "කෝපි",
+            "බත්",
+            "පාන්",
+            "කිරි",
+
+            "සිංහල",
+            "ඉංග්‍රීසි",
+            "භාෂාව",
+            "වචනය",
+            "වාක්‍යය",
+
+            "අකුරු",
+            "ලිවීම",
+            "කියවීම",
+
+            "ස්තුතියි",
+            "ස්තූතියි",
+            "කරුණාකර",
+            "සමාවෙන්න",
+
+            "ආයුබෝවන්",
+
+            "ලොකු",
+            "කුඩා",
+            "අලුත්",
+            "පරණ",
+            "ගොඩක්",
+            "ටිකක්",
+
+            "එක",
+            "දෙක",
+            "තුන",
+            "හතර",
+            "පහ",
+
+            "දවස",
+            "සතිය",
+            "මාසය",
+            "අවුරුද්ද",
+            "කාලය",
+
+            "වැඩ",
+            "වැඩක්",
+            "උදව්",
+            "උදව්වක්",
+
+            "ඇත්ත",
+            "ඇත්තටම",
+            "වැදගත්",
+            "විශේෂ",
+
+            "ලස්සන",
+            "නියමයි",
+            "සුපිරි",
+            "විශිෂ්ටයි",
+
+            "දුරකථනය",
+            "ෆෝන්",
+            "පරිගණකය",
+
+            "ඉන්ටර්නෙට්",
+            "වෙබ්",
+            "වෙබ් අඩවිය",
+
+            "යෙදුම",
+            "මෘදුකාංග",
+            "කේතය",
+            "තොරතුරු",
+            "දත්ත",
+
+            "ආරක්ෂාව",
+            "පද්ධතිය",
+            "තාක්ෂණය"
+    };
+
+    private void updateSinhalaSuggestions() {
+
+        if (sinhalaSuggestions == null) {
+            return;
+        }
+
+        sinhalaSuggestions.removeAllViews();
+
+        String prefix =
+                transliterateSinhala(
+                        sinhalaBuffer
+                );
+
+        if (sinhalaBuffer.length() < 2 ||
+                prefix.isEmpty()) {
+
+            return;
+        }
+
+        LinkedHashSet<String> matches =
+                new LinkedHashSet<>();
+
+        for (String word :
+                SINHALA_WORDS) {
+
+            if (word.startsWith(prefix)) {
+
+                matches.add(word);
+
+                if (matches.size() >= 3) {
+                    break;
+                }
+            }
+        }
+
+        for (String word : matches) {
+
+            Button button =
+                    new Button(this);
+
+            button.setText(word);
+            button.setTextColor(Color.WHITE);
+            button.setTextSize(14);
+            button.setAllCaps(false);
+            button.setGravity(Gravity.CENTER);
+            button.setIncludeFontPadding(true);
+            button.setPadding(
+                    dp(2),
+                    0,
+                    dp(2),
+                    0
+            );
+
+            GradientDrawable background =
+                    new GradientDrawable();
+
+            background.setColor(
+                    Color.rgb(20, 20, 20)
+            );
+
+            background.setStroke(
+                    dp(1),
+                    Color.rgb(0, 255, 100)
+            );
+
+            background.setCornerRadius(
+                    dp(6)
+            );
+
+            button.setBackground(
+                    background
+            );
+
+            LinearLayout.LayoutParams params =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(32),
+                            1
+                    );
+
+            params.setMargins(
+                    dp(2),
+                    dp(2),
+                    dp(2),
+                    dp(2)
+            );
+
+            button.setLayoutParams(params);
+
+            button.setOnClickListener(v -> {
+
+                commitSinhalaSuggestion(
+                        word
+                );
+            });
+
+            sinhalaSuggestions.addView(
+                    button
+            );
+        }
     }
 
     private void commitSinhalaSuggestion(
@@ -1102,19 +1318,44 @@ public class MagicboardService extends InputMethodService {
                 1
         );
 
-        sinhalaPhoneticBuffer = "";
+        sinhalaBuffer = "";
 
-        refreshSinhalaSuggestions();
+        updateSinhalaSuggestions();
     }
 
-    private void removeLastPhoneticPart() {
+    /* =====================================================
+       SMART PHONETIC BACKSPACE
+       ===================================================== */
 
-        if (sinhalaPhoneticBuffer.length() == 0) {
+    private void deleteLastPhoneticUnit() {
+
+        if (sinhalaBuffer.isEmpty()) {
             return;
         }
 
-        String[] endings = {
+        String[] units = {
+
                 "aae",
+
+                "tth",
+                "ddh",
+
+                "kh",
+                "gh",
+                "ch",
+                "jh",
+
+                "th",
+                "dh",
+
+                "ph",
+                "bh",
+
+                "sh",
+
+                "ng",
+                "ny",
+
                 "aa",
                 "ae",
                 "ii",
@@ -1123,273 +1364,38 @@ public class MagicboardService extends InputMethodService {
                 "ai",
                 "oo",
                 "au",
-                "tth",
-                "ddh",
-                "kh",
-                "gh",
-                "ch",
-                "jh",
-                "th",
-                "dh",
-                "ph",
-                "bh",
-                "sh",
-                "ng",
-                "ny",
+
                 "tt",
                 "dd",
                 "nn",
                 "ll"
         };
 
-        for (String ending : endings) {
+        for (String unit : units) {
 
-            if (sinhalaPhoneticBuffer.endsWith(
-                    ending
-            )) {
+            if (sinhalaBuffer.endsWith(unit)) {
 
-                sinhalaPhoneticBuffer =
-                        sinhalaPhoneticBuffer.substring(
+                sinhalaBuffer =
+                        sinhalaBuffer.substring(
                                 0,
-                                sinhalaPhoneticBuffer.length()
-                                        - ending.length()
+                                sinhalaBuffer.length()
+                                        - unit.length()
                         );
 
                 return;
             }
         }
 
-        sinhalaPhoneticBuffer =
-                sinhalaPhoneticBuffer.substring(
+        sinhalaBuffer =
+                sinhalaBuffer.substring(
                         0,
-                        sinhalaPhoneticBuffer.length() - 1
+                        sinhalaBuffer.length() - 1
                 );
     }
 
-    /* =========================================================
-       SUGGESTIONS
-       ========================================================= */
-
-    private static final String[] COMMON_WORDS = {
-
-            "මම",
-            "අපි",
-            "ඔයා",
-            "ඔබ",
-            "ඔහු",
-            "ඇය",
-
-            "මගේ",
-            "ඔයාගේ",
-            "අපේ",
-            "මට",
-            "මාව",
-
-            "හරි",
-            "හොඳ",
-            "හොඳයි",
-            "ඔව්",
-            "නැහැ",
-            "බැහැ",
-
-            "පුළුවන්",
-            "පුළුවන්ද",
-
-            "කරන්න",
-            "කරනවා",
-            "කරමු",
-            "කරන්නම්",
-            "කරලා",
-
-            "දෙන්න",
-            "ගන්න",
-            "යන්න",
-            "එන්න",
-            "ඉන්න",
-
-            "කියන්න",
-            "කියලා",
-            "කියනවා",
-
-            "දන්නවා",
-            "දන්නේ",
-
-            "මොකද",
-            "මොකක්",
-            "මොකද්ද",
-            "කොහොමද",
-            "කොහෙද",
-            "කවුද",
-            "ඇයි",
-
-            "අද",
-            "හෙට",
-            "ඊයේ",
-            "දැන්",
-            "පසුව",
-
-            "උදේ",
-            "දවල්",
-            "රෑ",
-
-            "ගෙදර",
-            "පාසල",
-            "පන්තිය",
-
-            "යාලුවා",
-            "යාලුවෝ",
-            "මිතුරා",
-            "මිතුරන්",
-
-            "මෙතන",
-            "එතන",
-
-            "ආවා",
-            "එනවා",
-            "ගියා",
-            "යනවා",
-
-            "කෑම",
-            "වතුර",
-            "තේ",
-            "කෝපි",
-            "බත්",
-            "පාන්",
-            "කිරි",
-
-            "සිංහල",
-            "ඉංග්‍රීසි",
-            "භාෂාව",
-            "වචනය",
-            "වාක්‍යය",
-
-            "ලිවීම",
-            "කියවීම",
-            "අකුරු",
-
-            "ස්තුතියි",
-            "ස්තූතියි",
-            "කරුණාකර",
-            "සමාවෙන්න",
-
-            "ආයුබෝවන්",
-            "සුභ",
-            "සුබ",
-            "සුභ පැතුම්",
-
-            "අලුත්",
-            "පරණ",
-            "ලොකු",
-            "කුඩා",
-            "ගොඩක්",
-            "ටිකක්",
-
-            "එක",
-            "දෙක",
-            "තුන",
-            "හතර",
-            "පහ",
-
-            "කාලය",
-            "දවස",
-            "සතිය",
-            "මාසය",
-            "අවුරුද්ද",
-
-            "වැඩ",
-            "වැඩක්",
-            "උදව්",
-            "උදව්වක්",
-
-            "අම්මා",
-            "තාත්තා",
-            "අයියා",
-            "අක්කා",
-            "මල්ලි",
-            "නංගි",
-
-            "බලන්න",
-            "බලමු",
-            "අහන්න",
-            "අහලා",
-            "හිතන්න",
-            "හිතනවා",
-
-            "දැනගන්න",
-            "ඉගෙනගන්න",
-            "ඉගෙනීම",
-
-            "ඇත්ත",
-            "ඇත්තටම",
-            "වැදගත්",
-            "විශේෂ",
-            "ලස්සන",
-            "නියමයි",
-            "සුපිරි",
-            "විශිෂ්ටයි",
-
-            "දුරකථනය",
-            "ෆෝන්",
-            "පරිගණකය",
-            "ඉන්ටර්නෙට්",
-            "වෙබ්",
-            "වෙබ් අඩවිය",
-
-            "යෙදුම",
-            "මෘදුකාංග",
-            "කේතය",
-            "තොරතුරු",
-            "දත්ත",
-            "ආරක්ෂාව",
-            "පද්ධතිය",
-            "තාක්ෂණය"
-    };
-
-    private List<String> getSinhalaSuggestions(
-            String phonetic
-    ) {
-
-        List<String> result =
-                new ArrayList<>();
-
-        if (phonetic == null ||
-                phonetic.length() < 2) {
-
-            return result;
-        }
-
-        String prefix =
-                transliterateSinhala(
-                        phonetic
-                );
-
-        if (prefix.length() == 0) {
-            return result;
-        }
-
-        LinkedHashSet<String> unique =
-                new LinkedHashSet<>();
-
-        for (String word : COMMON_WORDS) {
-
-            if (word.startsWith(prefix)) {
-
-                unique.add(word);
-
-                if (unique.size() >= 3) {
-                    break;
-                }
-            }
-        }
-
-        result.addAll(unique);
-
-        return result;
-    }
-
-    /* =========================================================
+    /* =====================================================
        SHIFT
-       ========================================================= */
+       ===================================================== */
 
     private void addShift(
             LinearLayout row
@@ -1442,9 +1448,9 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    /* =========================================================
+    /* =====================================================
        BACKSPACE
-       ========================================================= */
+       ===================================================== */
 
     private void addBackspace(
             LinearLayout row
@@ -1500,9 +1506,10 @@ public class MagicboardService extends InputMethodService {
         if (input == null) return;
 
         if (sinhalaMode &&
-                sinhalaPhoneticBuffer.length() > 0) {
+                !sinhalaBuffer.isEmpty()) {
 
-            removeLastPhoneticPart();
+            deleteLastPhoneticUnit();
+
             updateSinhalaComposition();
 
         } else {
@@ -1514,9 +1521,9 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
-    /* =========================================================
-       GENERAL CONTROLS
-       ========================================================= */
+    /* =====================================================
+       ENGLISH CONTROL ROW
+       ===================================================== */
 
     private void addControlRow() {
 
@@ -1572,11 +1579,14 @@ public class MagicboardService extends InputMethodService {
         sinhala.setOnClickListener(v -> {
 
             sinhalaMode = true;
+
             shiftOn = false;
             capsLock = false;
 
             numberMode = false;
             emojiMode = false;
+
+            sinhalaBuffer = "";
 
             refreshKeyboard();
         });
@@ -1620,9 +1630,9 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
-    /* =========================================================
+    /* =====================================================
        NUMBERS
-       ========================================================= */
+       ===================================================== */
 
     private void buildNumberKeyboard() {
 
@@ -1782,9 +1792,9 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
-    /* =========================================================
+    /* =====================================================
        EMOJI
-       ========================================================= */
+       ===================================================== */
 
     private void buildEmojiKeyboard() {
 
@@ -2141,6 +2151,7 @@ public class MagicboardService extends InputMethodService {
                             getCurrentInputConnection();
 
                     if (input != null) {
+
                         input.commitText(
                                 value,
                                 1
@@ -2155,9 +2166,9 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
-    /* =========================================================
+    /* =====================================================
        EMOJI DATA
-       ========================================================= */
+       ===================================================== */
 
     private static final String[] SMILEYS = {
             "😀","😃","😄","😁","😆","😅","😂","🤣",
@@ -2224,9 +2235,9 @@ public class MagicboardService extends InputMethodService {
             "☀️","🌙","☁️","☔","☮️","☯️","♻️","©️"
     };
 
-    /* =========================================================
+    /* =====================================================
        REFRESH
-       ========================================================= */
+       ===================================================== */
 
     private void refreshKeyboard() {
 
