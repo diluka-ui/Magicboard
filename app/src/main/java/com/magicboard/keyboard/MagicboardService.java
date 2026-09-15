@@ -13,7 +13,9 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Handler;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MagicboardService extends InputMethodService {
@@ -40,8 +42,23 @@ public class MagicboardService extends InputMethodService {
     private Runnable deleteRunnable = new Runnable() {
         @Override
         public void run() {
-            deleteOne();
-            deleteHandler.postDelayed(this, 70);
+            InputConnection input = getCurrentInputConnection();
+
+            if (input != null) {
+                if (sinhalaMode && sinhalaBuffer.length() > 0) {
+                    sinhalaBuffer =
+                            sinhalaBuffer.substring(
+                                    0,
+                                    sinhalaBuffer.length() - 1
+                            );
+
+                    updateSinhalaComposition();
+                } else {
+                    input.deleteSurroundingText(1, 0);
+                }
+
+                deleteHandler.postDelayed(this, 70);
+            }
         }
     };
 
@@ -70,7 +87,9 @@ public class MagicboardService extends InputMethodService {
                 dp(3),
                 dp(4)
         );
+
         keyboard.setBackgroundColor(Color.BLACK);
+
         keyboard.setMinimumHeight(
                 dp(KEYBOARD_CONTENT_HEIGHT + 7)
         );
@@ -88,13 +107,9 @@ public class MagicboardService extends InputMethodService {
 
     private LinearLayout createRow(int height) {
 
-        LinearLayout row =
-                new LinearLayout(this);
+        LinearLayout row = new LinearLayout(this);
 
-        row.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-
+        row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
 
         row.setLayoutParams(
@@ -107,20 +122,22 @@ public class MagicboardService extends InputMethodService {
         return row;
     }
 
-    private Button createKey(
-            String text,
-            float weight
-    ) {
+    private Button createKey(String text, float weight) {
 
-        Button button =
-                new Button(this);
+        Button button = new Button(this);
 
         button.setText(text);
         button.setTextColor(Color.WHITE);
         button.setTextSize(15);
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(0, 0, 0, 0);
+
+        button.setPadding(
+                0,
+                0,
+                0,
+                0
+        );
 
         GradientDrawable background =
                 new GradientDrawable();
@@ -188,17 +205,12 @@ public class MagicboardService extends InputMethodService {
         addControlRow();
     }
 
-    private void addLetterRow(
-            String letters
-    ) {
+    private void addLetterRow(String letters) {
 
         LinearLayout row =
                 createRow(60);
 
-        for (int i = 0;
-             i < letters.length();
-             i++) {
-
+        for (int i = 0; i < letters.length(); i++) {
             addLetterKey(
                     row,
                     String.valueOf(
@@ -247,9 +259,7 @@ public class MagicboardService extends InputMethodService {
                 );
 
                 if (shiftOn && !capsLock) {
-
                     shiftOn = false;
-
                     refreshKeyboard();
                 }
             }
@@ -259,169 +269,188 @@ public class MagicboardService extends InputMethodService {
     }
 
     /* =====================================================
-       PHONETIC SINHALA
+       SINHALA PHONETIC KEYBOARD
        ===================================================== */
 
     private void buildSinhalaKeyboard() {
 
         /*
-         * IMPORTANT:
-         *
-         * This is a phonetic Sinhala keyboard.
-         * The visible keys remain QWERTY-style.
-         *
-         * k + a  = ක
-         * k + aa = කා
-         * k + i  = කි
-         * k + ii = කී
-         * k + u  = කු
-         * k + uu = කූ
-         * k + e  = කෙ
-         * k + ee = කේ
-         * k + o  = කො
-         * k + oo = කෝ
-         * k + au = කෞ
-         * k + r + i = ක්‍රි
+         * Compact phonetic layout.
+         * Labels are kept short so every key fits
+         * the same keyboard width.
          */
 
-        LinearLayout row1 =
-                createRow(56);
-
-        addSinhalaPhoneticKey(row1, "q");
-        addSinhalaPhoneticKey(row1, "w");
-        addSinhalaPhoneticKey(row1, "e");
-        addSinhalaPhoneticKey(row1, "r");
-        addSinhalaPhoneticKey(row1, "t");
-        addSinhalaPhoneticKey(row1, "y");
-        addSinhalaPhoneticKey(row1, "u");
-        addSinhalaPhoneticKey(row1, "i");
-        addSinhalaPhoneticKey(row1, "o");
-        addSinhalaPhoneticKey(row1, "p");
-
-        keyboard.addView(row1);
-
-        LinearLayout row2 =
-                createRow(56);
-
-        addSinhalaPhoneticKey(row2, "a");
-        addSinhalaPhoneticKey(row2, "s");
-        addSinhalaPhoneticKey(row2, "d");
-        addSinhalaPhoneticKey(row2, "f");
-        addSinhalaPhoneticKey(row2, "g");
-        addSinhalaPhoneticKey(row2, "h");
-        addSinhalaPhoneticKey(row2, "j");
-        addSinhalaPhoneticKey(row2, "k");
-        addSinhalaPhoneticKey(row2, "l");
-
-        keyboard.addView(row2);
-
-        LinearLayout row3 =
-                createRow(56);
-
-        addSinhalaShift(row3);
-
-        addSinhalaPhoneticKey(row3, "z");
-        addSinhalaPhoneticKey(row3, "x");
-        addSinhalaPhoneticKey(row3, "c");
-        addSinhalaPhoneticKey(row3, "v");
-        addSinhalaPhoneticKey(row3, "b");
-        addSinhalaPhoneticKey(row3, "n");
-        addSinhalaPhoneticKey(row3, "m");
-
-        addBackspace(row3);
-
-        keyboard.addView(row3);
-
-        addSinhalaBottomRow();
-    }
-
-    private void addSinhalaPhoneticKey(
-            LinearLayout row,
-            String value
-    ) {
-
-        Button button =
-                createKey(value, 1);
-
-        button.setTextSize(15);
-
-        button.setAllCaps(false);
-
-        button.setIncludeFontPadding(true);
-
-        button.setGravity(
-                Gravity.CENTER
+        addSinhalaPhoneticRow(
+                new String[]{
+                        "q","w","e","r","t",
+                        "y","u","i","o","p"
+                }
         );
 
-        button.setOnClickListener(v -> {
+        addSinhalaPhoneticRow(
+                new String[]{
+                        "a","s","d","f","g",
+                        "h","j","k","l"
+                }
+        );
 
-            String typed = value;
-
-            if (shiftOn || capsLock) {
-                typed = typed.toUpperCase();
-            }
-
-            sinhalaBuffer += typed;
-
-            updateSinhalaComposition();
-
-            if (shiftOn && !capsLock) {
-                shiftOn = false;
-            }
-        });
-
-        row.addView(button);
-    }
-
-    private void addSinhalaShift(
-            LinearLayout row
-    ) {
+        LinearLayout row =
+                createRow(60);
 
         Button shift =
                 createKey(
-                        capsLock
-                                ? "⇧"
-                                : shiftOn
-                                    ? "↑"
-                                    : "⇧",
-                        1.35f
+                        shiftOn ? "↑" : "⇧",
+                        1.20f
                 );
-
-        shift.setTextSize(16);
 
         shift.setOnClickListener(v -> {
 
-            long now =
-                    System.currentTimeMillis();
-
-            if (now - lastShiftTap < 400) {
-
-                capsLock = !capsLock;
-                shiftOn = false;
-                lastShiftTap = 0;
-
-            } else {
-
-                lastShiftTap = now;
-
-                if (capsLock) {
-
-                    capsLock = false;
-                    shiftOn = false;
-
-                } else {
-
-                    shiftOn = !shiftOn;
-                }
-            }
+            shiftOn = !shiftOn;
 
             refreshKeyboard();
         });
 
         row.addView(shift);
+
+        String[] bottom = {
+                "z","x","c","v","b","n","m"
+        };
+
+        for (String value : bottom) {
+
+            Button key =
+                    createKey(
+                            value,
+                            1
+                    );
+
+            key.setTextSize(14);
+
+            key.setOnClickListener(v -> {
+
+                sinhalaBuffer += value;
+
+                updateSinhalaComposition();
+            });
+
+            row.addView(key);
+        }
+
+        addSinhalaBackspace(row);
+
+        keyboard.addView(row);
+
+        addSinhalaControlRow();
     }
 
-    private void addSinhalaBottomRow() {
+    private void addSinhalaPhoneticRow(
+            String[] keys
+    ) {
+
+        LinearLayout row =
+                createRow(52);
+
+        for (String value : keys) {
+
+            Button key =
+                    createKey(
+                            value,
+                            1
+                    );
+
+            key.setTextSize(14);
+
+            key.setOnClickListener(v -> {
+
+                sinhalaBuffer += value;
+
+                updateSinhalaComposition();
+            });
+
+            row.addView(key);
+        }
+
+        keyboard.addView(row);
+    }
+
+    private void addSinhalaBackspace(
+            LinearLayout row
+    ) {
+
+        Button button =
+                createKey(
+                        "⌫",
+                        1.30f
+                );
+
+        button.setOnTouchListener(
+                (v, event) -> {
+
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_DOWN
+                    ) {
+
+                        deleteSinhalaOne();
+
+                        deleteHandler.postDelayed(
+                                deleteRunnable,
+                                450
+                        );
+
+                        return true;
+                    }
+
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_UP ||
+                            event.getAction() ==
+                            MotionEvent.ACTION_CANCEL
+                    ) {
+
+                        deleteHandler.removeCallbacks(
+                                deleteRunnable
+                        );
+
+                        return true;
+                    }
+
+                    return true;
+                }
+        );
+
+        row.addView(button);
+    }
+
+    private void deleteSinhalaOne() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input == null) {
+            return;
+        }
+
+        if (sinhalaBuffer.length() > 0) {
+
+            sinhalaBuffer =
+                    sinhalaBuffer.substring(
+                            0,
+                            sinhalaBuffer.length() - 1
+                    );
+
+            updateSinhalaComposition();
+
+        } else {
+
+            input.deleteSurroundingText(
+                    1,
+                    0
+            );
+        }
+    }
+
+    private void addSinhalaControlRow() {
 
         LinearLayout row =
                 createRow(60);
@@ -429,13 +458,13 @@ public class MagicboardService extends InputMethodService {
         Button numbers =
                 createKey(
                         "123",
-                        1.15f
+                        1.20f
                 );
 
         Button english =
                 createKey(
                         "ABC",
-                        1.15f
+                        1.20f
                 );
 
         Button emoji =
@@ -471,11 +500,10 @@ public class MagicboardService extends InputMethodService {
             finishSinhalaComposition();
 
             sinhalaMode = false;
-            numberMode = false;
-            emojiMode = false;
-
             shiftOn = false;
             capsLock = false;
+            numberMode = false;
+            emojiMode = false;
 
             refreshKeyboard();
         });
@@ -492,13 +520,12 @@ public class MagicboardService extends InputMethodService {
 
         space.setOnClickListener(v -> {
 
+            finishSinhalaComposition();
+
             InputConnection input =
                     getCurrentInputConnection();
 
             if (input != null) {
-
-                finishSinhalaComposition();
-
                 input.commitText(
                         " ",
                         1
@@ -508,20 +535,9 @@ public class MagicboardService extends InputMethodService {
 
         enter.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
+            finishSinhalaComposition();
 
-            if (input != null) {
-
-                finishSinhalaComposition();
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         row.addView(numbers);
@@ -531,6 +547,412 @@ public class MagicboardService extends InputMethodService {
         row.addView(enter);
 
         keyboard.addView(row);
+    }
+
+    /* =====================================================
+       PHONETIC TRANSLITERATION
+       ===================================================== */
+
+    private static final String[] VOWEL_KEYS = {
+            "aae",
+            "aa",
+            "ae",
+            "ii",
+            "uu",
+            "ee",
+            "ai",
+            "au",
+            "a",
+            "i",
+            "u",
+            "e",
+            "o"
+    };
+
+    private static final String[] VOWEL_VALUES = {
+            "ඈ",
+            "ආ",
+            "ඇ",
+            "ඊ",
+            "ඌ",
+            "ඒ",
+            "ඓ",
+            "ඖ",
+            "අ",
+            "ඉ",
+            "උ",
+            "එ",
+            "ඔ"
+    };
+
+    private static final String[] CONSONANT_KEYS = {
+
+            "tth",
+            "ddh",
+            "kh",
+            "gh",
+            "ch",
+            "jh",
+            "th",
+            "dh",
+            "ph",
+            "bh",
+            "sh",
+            "ss",
+            "ny",
+            "ng",
+            "tt",
+            "dd",
+            "dh",
+            "nn",
+            "ll",
+            "f",
+            "k",
+            "g",
+            "c",
+            "j",
+            "t",
+            "d",
+            "n",
+            "p",
+            "b",
+            "m",
+            "y",
+            "r",
+            "l",
+            "v",
+            "w",
+            "s",
+            "h"
+    };
+
+    private static final String[] CONSONANT_VALUES = {
+
+            "ඨ",
+            "ඪ",
+            "ඛ",
+            "ඝ",
+            "ඡ",
+            "ඣ",
+            "ථ",
+            "ධ",
+            "ඵ",
+            "භ",
+            "ශ",
+            "ෂ",
+            "ඤ",
+            "ඞ",
+            "ට",
+            "ඩ",
+            "ධ",
+            "ණ",
+            "ළ",
+            "ෆ",
+            "ක",
+            "ග",
+            "ච",
+            "ජ",
+            "ත",
+            "ද",
+            "න",
+            "ප",
+            "බ",
+            "ම",
+            "ය",
+            "ර",
+            "ල",
+            "ව",
+            "ව",
+            "ස",
+            "හ"
+    };
+
+    private static final Map<String, String> VOWELS =
+            new HashMap<>();
+
+    private static final Map<String, String> CONSONANTS =
+            new HashMap<>();
+
+    static {
+
+        for (int i = 0;
+             i < VOWEL_KEYS.length;
+             i++) {
+
+            VOWELS.put(
+                    VOWEL_KEYS[i],
+                    VOWEL_VALUES[i]
+            );
+        }
+
+        for (int i = 0;
+             i < CONSONANT_KEYS.length &&
+             i < CONSONANT_VALUES.length;
+             i++) {
+
+            CONSONANTS.put(
+                    CONSONANT_KEYS[i],
+                    CONSONANT_VALUES[i]
+            );
+        }
+    }
+
+    private String transliterate(
+            String text
+    ) {
+
+        if (text == null ||
+                text.length() == 0) {
+
+            return "";
+        }
+
+        StringBuilder output =
+                new StringBuilder();
+
+        int position = 0;
+
+        while (position < text.length()) {
+
+            String remaining =
+                    text.substring(position);
+
+            String consonant =
+                    findLongestConsonant(
+                            remaining
+                    );
+
+            if (consonant != null) {
+
+                String sinhala =
+                        CONSONANTS.get(
+                                consonant
+                        );
+
+                int next =
+                        position +
+                        consonant.length();
+
+                String rest =
+                        text.substring(next);
+
+                /*
+                 * Consonant + r + vowel
+                 * Example:
+                 * kri -> ක්‍රි
+                 */
+
+                if (rest.startsWith("r")) {
+
+                    String afterR =
+                            rest.substring(1);
+
+                    String vowel =
+                            findLongestVowel(
+                                    afterR
+                            );
+
+                    if (vowel != null) {
+
+                        output.append(
+                                sinhala
+                        );
+
+                        output.append("්ර");
+
+                        output.append(
+                                vowelMark(
+                                        vowel
+                                )
+                        );
+
+                        position =
+                                next +
+                                1 +
+                                vowel.length();
+
+                        continue;
+                    }
+                }
+
+                String vowel =
+                        findLongestVowel(
+                                rest
+                        );
+
+                if (vowel != null) {
+
+                    output.append(
+                            sinhala
+                    );
+
+                    output.append(
+                            vowelMark(vowel)
+                    );
+
+                    position =
+                            next +
+                            vowel.length();
+
+                    continue;
+                }
+
+                /*
+                 * Consonant without vowel
+                 * becomes virama.
+                 */
+
+                if (rest.length() > 0) {
+
+                    String nextConsonant =
+                            findLongestConsonant(
+                                    rest
+                            );
+
+                    if (nextConsonant != null) {
+
+                        output.append(
+                                sinhala
+                        );
+
+                        output.append("්");
+
+                        position = next;
+
+                        continue;
+                    }
+                }
+
+                /*
+                 * Default consonant gets
+                 * implicit "a".
+                 */
+
+                output.append(
+                        sinhala
+                );
+
+                position = next;
+
+                continue;
+            }
+
+            String vowel =
+                    findLongestVowel(
+                            remaining
+                    );
+
+            if (vowel != null) {
+
+                output.append(
+                        VOWELS.get(vowel)
+                );
+
+                position +=
+                        vowel.length();
+
+                continue;
+            }
+
+            output.append(
+                    text.charAt(position)
+            );
+
+            position++;
+        }
+
+        return output.toString();
+    }
+
+    private String findLongestVowel(
+            String text
+    ) {
+
+        for (String key : VOWEL_KEYS) {
+
+            if (text.startsWith(key)) {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
+    private String findLongestConsonant(
+            String text
+    ) {
+
+        for (String key : CONSONANT_KEYS) {
+
+            if (text.startsWith(key)) {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
+    private String vowelMark(
+            String vowel
+    ) {
+
+        if (vowel.equals("a")) {
+            return "";
+        }
+
+        if (vowel.equals("aa")) {
+            return "ා";
+        }
+
+        if (vowel.equals("ae")) {
+            return "ැ";
+        }
+
+        if (vowel.equals("aae")) {
+            return "ෑ";
+        }
+
+        if (vowel.equals("i")) {
+            return "ි";
+        }
+
+        if (vowel.equals("ii")) {
+            return "ී";
+        }
+
+        if (vowel.equals("u")) {
+            return "ු";
+        }
+
+        if (vowel.equals("uu")) {
+            return "ූ";
+        }
+
+        if (vowel.equals("e")) {
+            return "ෙ";
+        }
+
+        if (vowel.equals("ee")) {
+            return "ේ";
+        }
+
+        if (vowel.equals("ai")) {
+            return "ෛ";
+        }
+
+        if (vowel.equals("o")) {
+            return "ො";
+        }
+
+        if (vowel.equals("oo")) {
+            return "ෝ";
+        }
+
+        if (vowel.equals("au")) {
+            return "ෞ";
+        }
+
+        return "";
     }
 
     private void updateSinhalaComposition() {
@@ -543,7 +965,7 @@ public class MagicboardService extends InputMethodService {
         }
 
         String result =
-                transliterateSinhala(
+                transliterate(
                         sinhalaBuffer
                 );
 
@@ -558,20 +980,25 @@ public class MagicboardService extends InputMethodService {
         InputConnection input =
                 getCurrentInputConnection();
 
-        if (input != null) {
+        if (input == null) {
+            sinhalaBuffer = "";
+            return;
+        }
 
-            if (!sinhalaBuffer.isEmpty()) {
+        if (sinhalaBuffer.length() > 0) {
 
-                String result =
-                        transliterateSinhala(
-                                sinhalaBuffer
-                        );
+            String result =
+                    transliterate(
+                            sinhalaBuffer
+                    );
 
-                input.setComposingText(
-                        result,
-                        1
-                );
-            }
+            input.finishComposingText();
+
+            input.commitText(
+                    result,
+                    1
+            );
+        } else {
 
             input.finishComposingText();
         }
@@ -580,541 +1007,66 @@ public class MagicboardService extends InputMethodService {
     }
 
     /* =====================================================
-       SINHALA TRANSLITERATOR
+       ENGLISH SHIFT
        ===================================================== */
 
-    private static final Map<String, String>
-            SINHALA_CONSONANTS =
-            new LinkedHashMap<>();
-
-    static {
-
-        SINHALA_CONSONANTS.put(
-                "tth", "ඨ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ddh", "ඪ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "kh", "ඛ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "gh", "ඝ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ch", "ඡ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "jh", "ඣ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "th", "ථ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "dh", "ධ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ph", "ඵ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "bh", "භ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "sh", "ශ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ss", "ෂ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ng", "ඞ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ny", "ඤ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "tt", "ට"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "dd", "ඩ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "nn", "ණ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "ll", "ළ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "k", "ක"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "g", "ග"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "c", "ච"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "j", "ජ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "t", "ත"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "d", "ද"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "n", "න"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "p", "ප"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "b", "බ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "m", "ම"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "y", "ය"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "r", "ර"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "l", "ල"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "v", "ව"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "w", "ව"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "s", "ස"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "h", "හ"
-        );
-
-        SINHALA_CONSONANTS.put(
-                "f", "ෆ"
-        );
-    }
-
-    private static final String[] VOWELS = {
-
-            "aae",
-            "t",
-            "t",
-            "ii",
-            "uu",
-            "ee",
-            "ai",
-            "oo",
-            "au",
-            "aa",
-            "ae",
-            "a",
-            "i",
-            "u",
-            "e",
-            "o"
-    };
-
-    private String findConsonant(
-            String text,
-            int position
+    private void addShift(
+            LinearLayout row
     ) {
 
-        for (String key :
-                SINHALA_CONSONANTS.keySet()) {
-
-            if (text.startsWith(
-                    key,
-                    position
-            )) {
-
-                return key;
-            }
-        }
-
-        return null;
-    }
-
-    private String findVowel(
-            String text,
-            int position
-    ) {
-
-        String[] vowels = {
-
-                "aae",
-                "aa",
-                "ae",
-
-                "ii",
-                "uu",
-                "ee",
-
-                "ai",
-                "oo",
-                "au",
-
-                "a",
-                "i",
-                "u",
-                "e",
-                "o"
-        };
-
-        for (String vowel : vowels) {
-
-            if (text.startsWith(
-                    vowel,
-                    position
-            )) {
-
-                return vowel;
-            }
-        }
-
-        return null;
-    }
-
-    private String independentVowel(
-            String vowel
-    ) {
-
-        switch (vowel) {
-
-            case "a":
-                return "අ";
-
-            case "aa":
-                return "ආ";
-
-            case "ae":
-                return "ඇ";
-
-            case "aae":
-                return "ඈ";
-
-            case "i":
-                return "ඉ";
-
-            case "ii":
-                return "ඊ";
-
-            case "u":
-                return "උ";
-
-            case "uu":
-                return "ඌ";
-
-            case "e":
-                return "එ";
-
-            case "ee":
-                return "ඒ";
-
-            case "ai":
-                return "ඓ";
-
-            case "o":
-                return "ඔ";
-
-            case "oo":
-                return "ඕ";
-
-            case "au":
-                return "ඖ";
-
-            default:
-                return "";
-        }
-    }
-
-    private String vowelMark(
-            String vowel
-    ) {
-
-        switch (vowel) {
-
-            case "a":
-                return "";
-
-            case "aa":
-                return "ා";
-
-            case "ae":
-                return "ැ";
-
-            case "aae":
-                return "ෑ";
-
-            case "i":
-                return "ි";
-
-            case "ii":
-                return "ී";
-
-            case "u":
-                return "ු";
-
-            case "uu":
-                return "ූ";
-
-            case "e":
-                return "ෙ";
-
-            case "ee":
-                return "ේ";
-
-            case "ai":
-                return "ෛ";
-
-            case "o":
-                return "ො";
-
-            case "oo":
-                return "ෝ";
-
-            case "au":
-                return "ෞ";
-
-            default:
-                return "";
-        }
-    }
-
-    private String transliterateSinhala(
-            String text
-    ) {
-
-        if (text == null ||
-                text.length() == 0) {
-
-            return "";
-        }
-
-        StringBuilder result =
-                new StringBuilder();
-
-        int i = 0;
-
-        while (i < text.length()) {
-
-            String consonant =
-                    findConsonant(
-                            text,
-                            i
-                    );
-
-            if (consonant != null) {
-
-                String base =
-                        SINHALA_CONSONANTS.get(
-                                consonant
+        String shiftText =
+                capsLock
+                        ? "⇧"
+                        : (
+                            shiftOn
+                                    ? "↑"
+                                    : "⇧"
                         );
 
-                int next =
-                        i + consonant.length();
-
-                /*
-                 * kra / kri / kru / kre / kro
-                 */
-
-                if (next < text.length()
-                        &&
-                        text.charAt(next)
-                                == 'r') {
-
-                    int vowelPosition =
-                            next + 1;
-
-                    String vowel =
-                            findVowel(
-                                    text,
-                                    vowelPosition
-                            );
-
-                    if (vowel != null) {
-
-                        result.append(base);
-                        result.append("්ර");
-                        result.append(
-                                vowelMark(vowel)
-                        );
-
-                        i =
-                                vowelPosition
-                                        + vowel.length();
-
-                        continue;
-                    }
-
-                    /*
-                     * kr
-                     */
-
-                    result.append(base);
-                    result.append("්ර");
-
-                    i =
-                            vowelPosition;
-
-                    continue;
-                }
-
-                /*
-                 * consonant + y
-                 */
-
-                if (next < text.length()
-                        &&
-                        text.charAt(next)
-                                == 'y') {
-
-                    int vowelPosition =
-                            next + 1;
-
-                    String vowel =
-                            findVowel(
-                                    text,
-                                    vowelPosition
-                            );
-
-                    if (vowel != null) {
-
-                        result.append(base);
-                        result.append("්ය");
-                        result.append(
-                                vowelMark(vowel)
-                        );
-
-                        i =
-                                vowelPosition
-                                        + vowel.length();
-
-                        continue;
-                    }
-                }
-
-                /*
-                 * consonant + vowel
-                 */
-
-                String vowel =
-                        findVowel(
-                                text,
-                                next
-                        );
-
-                if (vowel != null) {
-
-                    result.append(base);
-
-                    result.append(
-                            vowelMark(vowel)
-                    );
-
-                    i =
-                            next + vowel.length();
-
-                    continue;
-                }
-
-                /*
-                 * consonant + consonant
-                 */
-
-                if (next < text.length()) {
-
-                    String nextConsonant =
-                            findConsonant(
-                                    text,
-                                    next
-                            );
-
-                    if (nextConsonant != null) {
-
-                        result.append(base);
-                        result.append("්");
-
-                        i = next;
-
-                        continue;
-                    }
-                }
-
-                result.append(base);
-
-                i = next;
-
-                continue;
-            }
-
-            String vowel =
-                    findVowel(
-                            text,
-                            i
-                    );
-
-            if (vowel != null) {
-
-                result.append(
-                        independentVowel(
-                                vowel
-                        )
+        Button button =
+                createKey(
+                        shiftText,
+                        1.35f
                 );
 
-                i =
-                        i + vowel.length();
+        button.setOnClickListener(v -> {
 
-                continue;
+            long now =
+                    System.currentTimeMillis();
+
+            if (
+                    now - lastShiftTap < 400
+            ) {
+
+                capsLock =
+                        !capsLock;
+
+                shiftOn = false;
+
+                lastShiftTap = 0;
+
+                refreshKeyboard();
+
+                return;
             }
 
-            result.append(
-                    text.charAt(i)
-            );
+            lastShiftTap = now;
 
-            i++;
-        }
+            if (capsLock) {
 
-        return result.toString();
+                capsLock = false;
+                shiftOn = false;
+
+            } else {
+
+                shiftOn =
+                        !shiftOn;
+            }
+
+            refreshKeyboard();
+        });
+
+        row.addView(button);
     }
 
     /* =====================================================
@@ -1134,8 +1086,10 @@ public class MagicboardService extends InputMethodService {
         button.setOnTouchListener(
                 (v, event) -> {
 
-                    if (event.getAction()
-                            == MotionEvent.ACTION_DOWN) {
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_DOWN
+                    ) {
 
                         deleteOne();
 
@@ -1147,11 +1101,12 @@ public class MagicboardService extends InputMethodService {
                         return true;
                     }
 
-                    if (event.getAction()
-                            == MotionEvent.ACTION_UP
-                            ||
-                            event.getAction()
-                                    == MotionEvent.ACTION_CANCEL) {
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_UP ||
+                            event.getAction() ==
+                            MotionEvent.ACTION_CANCEL
+                    ) {
 
                         deleteHandler.removeCallbacks(
                                 deleteRunnable
@@ -1172,37 +1127,6 @@ public class MagicboardService extends InputMethodService {
         InputConnection input =
                 getCurrentInputConnection();
 
-        if (sinhalaMode &&
-                !sinhalaBuffer.isEmpty()) {
-
-            sinhalaBuffer =
-                    removeLastPhoneticUnit(
-                            sinhalaBuffer
-                    );
-
-            if (input != null) {
-
-                String result =
-                        transliterateSinhala(
-                                sinhalaBuffer
-                        );
-
-                if (result.isEmpty()) {
-
-                    input.finishComposingText();
-
-                } else {
-
-                    input.setComposingText(
-                            result,
-                            1
-                    );
-                }
-            }
-
-            return;
-        }
-
         if (input != null) {
 
             input.deleteSurroundingText(
@@ -1212,121 +1136,8 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
-    private String removeLastPhoneticUnit(
-            String text
-    ) {
-
-        String[] units = {
-
-                "tth",
-                "ddh",
-
-                "aae",
-
-                "kh",
-                "gh",
-                "ch",
-                "jh",
-                "th",
-                "dh",
-                "ph",
-                "bh",
-                "sh",
-
-                "ng",
-                "ny",
-
-                "ii",
-                "uu",
-                "ee",
-                "ai",
-                "oo",
-                "au",
-
-                "aa",
-                "ae",
-
-                "tt",
-                "dd",
-                "nn",
-                "ll"
-        };
-
-        for (String unit : units) {
-
-            if (text.endsWith(unit)) {
-
-                return text.substring(
-                        0,
-                        text.length()
-                                - unit.length()
-                );
-            }
-        }
-
-        return text.substring(
-                0,
-                text.length() - 1
-        );
-    }
-
     /* =====================================================
-       ENGLISH SHIFT
-       ===================================================== */
-
-    private void addShift(
-            LinearLayout row
-    ) {
-
-        String shiftText =
-                capsLock
-                        ? "⇧"
-                        : shiftOn
-                            ? "↑"
-                            : "⇧";
-
-        Button button =
-                createKey(
-                        shiftText,
-                        1.35f
-                );
-
-        button.setOnClickListener(v -> {
-
-            long now =
-                    System.currentTimeMillis();
-
-            if (now - lastShiftTap < 400) {
-
-                capsLock = !capsLock;
-                shiftOn = false;
-                lastShiftTap = 0;
-
-                refreshKeyboard();
-
-                return;
-            }
-
-            lastShiftTap = now;
-
-            if (capsLock) {
-
-                capsLock = false;
-                shiftOn = false;
-
-            } else {
-
-                shiftOn = !shiftOn;
-            }
-
-            refreshKeyboard();
-        });
-
-        row.addView(button);
-    }
-
-    /* =====================================================
-       ENGLISH CONTROL
+       MAIN CONTROL ROW
        ===================================================== */
 
     private void addControlRow() {
@@ -1384,13 +1195,11 @@ public class MagicboardService extends InputMethodService {
 
             sinhalaMode = true;
 
-            numberMode = false;
-            emojiMode = false;
-
             shiftOn = false;
             capsLock = false;
 
-            sinhalaBuffer = "";
+            numberMode = false;
+            emojiMode = false;
 
             refreshKeyboard();
         });
@@ -1411,18 +1220,7 @@ public class MagicboardService extends InputMethodService {
 
         enter.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         row.addView(numbers);
@@ -1432,6 +1230,22 @@ public class MagicboardService extends InputMethodService {
         row.addView(enter);
 
         keyboard.addView(row);
+    }
+
+    private void sendEnter() {
+
+        InputConnection input =
+                getCurrentInputConnection();
+
+        if (input != null) {
+
+            input.sendKeyEvent(
+                    new android.view.KeyEvent(
+                            android.view.KeyEvent.ACTION_DOWN,
+                            android.view.KeyEvent.KEYCODE_ENTER
+                    )
+            );
+        }
     }
 
     /* =====================================================
@@ -1516,7 +1330,6 @@ public class MagicboardService extends InputMethodService {
                     getCurrentInputConnection();
 
             if (input != null) {
-
                 input.commitText(
                         " ",
                         1
@@ -1526,18 +1339,7 @@ public class MagicboardService extends InputMethodService {
 
         enter.setOnClickListener(v -> {
 
-            InputConnection input =
-                    getCurrentInputConnection();
-
-            if (input != null) {
-
-                input.sendKeyEvent(
-                        new android.view.KeyEvent(
-                                android.view.KeyEvent.ACTION_DOWN,
-                                android.view.KeyEvent.KEYCODE_ENTER
-                        )
-                );
-            }
+            sendEnter();
         });
 
         bottom.addView(emoji);
@@ -1554,9 +1356,11 @@ public class MagicboardService extends InputMethodService {
         LinearLayout row =
                 createRow(60);
 
-        for (int i = 0;
-             i < symbols.length();
-             i++) {
+        for (
+                int i = 0;
+                i < symbols.length();
+                i++
+        ) {
 
             addNumberKey(
                     row,
@@ -1796,8 +1600,10 @@ public class MagicboardService extends InputMethodService {
         back.setOnTouchListener(
                 (v, event) -> {
 
-                    if (event.getAction()
-                            == MotionEvent.ACTION_DOWN) {
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_DOWN
+                    ) {
 
                         deleteOne();
 
@@ -1809,11 +1615,12 @@ public class MagicboardService extends InputMethodService {
                         return true;
                     }
 
-                    if (event.getAction()
-                            == MotionEvent.ACTION_UP
-                            ||
-                            event.getAction()
-                                    == MotionEvent.ACTION_CANCEL) {
+                    if (
+                            event.getAction() ==
+                            MotionEvent.ACTION_UP ||
+                            event.getAction() ==
+                            MotionEvent.ACTION_CANCEL
+                    ) {
 
                         deleteHandler.removeCallbacks(
                                 deleteRunnable
@@ -1908,9 +1715,11 @@ public class MagicboardService extends InputMethodService {
 
         int columns = 8;
 
-        for (int i = 0;
-             i < emojis.length;
-             i += columns) {
+        for (
+                int i = 0;
+                i < emojis.length;
+                i += columns
+        ) {
 
             LinearLayout row =
                     new LinearLayout(this);
@@ -1930,14 +1739,19 @@ public class MagicboardService extends InputMethodService {
                     )
             );
 
-            for (int j = 0;
-                 j < columns;
-                 j++) {
+            for (
+                    int j = 0;
+                    j < columns;
+                    j++
+            ) {
 
                 int index =
                         i + j;
 
-                if (index >= emojis.length) {
+                if (
+                        index >=
+                        emojis.length
+                ) {
                     break;
                 }
 
@@ -1978,6 +1792,7 @@ public class MagicboardService extends InputMethodService {
        ===================================================== */
 
     private static final String[] SMILEYS = {
+
             "😀","😃","😄","😁","😆","😅","😂","🤣",
             "😊","😇","🙂","🙃","😉","😌","😍","🥰",
             "😘","😗","😙","😚","😋","😛","😝","😜",
@@ -1992,6 +1807,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] HEARTS = {
+
             "❤️","🧡","💛","💚","💙","💜","🖤","🤍",
             "🤎","💔","💕","💞","💓","💗","💖","💘",
             "💝","💟","❣️","💯","💫","✨","⭐","🌟",
@@ -1999,6 +1815,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] ANIMALS = {
+
             "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼",
             "🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈",
             "🙉","🙊","🐔","🐧","🐦","🐤","🦄","🐝",
@@ -2007,6 +1824,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] FOOD = {
+
             "🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓",
             "🍒","🍑","🍍","🥭","🥝","🍅","🥑","🍕",
             "🍔","🍟","🌭","🌮","🍿","🍩","🍪","🎂",
@@ -2015,6 +1833,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] ACTIVITIES = {
+
             "⚽","🏀","🏈","⚾","🎾","🏐","🏆","🥇",
             "🥈","🥉","🎮","🎯","🎸","🎹","🎤","🎧",
             "🎬","🎨","🎭","🎪","🎲","🎳","🏋️","🚴",
@@ -2022,6 +1841,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] TRAVEL = {
+
             "🚗","🚕","🚌","🚓","🚑","🚒","🚚","🚲",
             "✈️","🚀","🚁","🚢","🏠","🏢","🏥","🏫",
             "🌍","🌎","🌏","🗺️","🏖️","🏝️","⛰️","🌋",
@@ -2029,6 +1849,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] OBJECTS = {
+
             "⌚","📱","💻","⌨️","🖥️","📷","📺","📻",
             "☎️","💡","🔦","🔑","🔒","🔓","🔨","🛠️",
             "⚙️","🧰","📚","📖","✏️","📝","📌","📎",
@@ -2036,6 +1857,7 @@ public class MagicboardService extends InputMethodService {
     };
 
     private static final String[] SYMBOLS = {
+
             "❤️","✔️","✅","❌","❗","❓","‼️","⁉️",
             "⚠️","⭕","🚫","♻️","☑️","🔴","🟠","🟡",
             "🟢","🔵","🟣","⚫","⚪","⭐","✨","⚡",
@@ -2047,6 +1869,10 @@ public class MagicboardService extends InputMethodService {
        ===================================================== */
 
     private void refreshKeyboard() {
+
+        if (keyboard == null) {
+            return;
+        }
 
         keyboard.removeAllViews();
 
