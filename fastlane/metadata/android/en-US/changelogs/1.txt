@@ -1,0 +1,1 @@
+Initial release of Magicboard v1.0.0.
