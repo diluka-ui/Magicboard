@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.Intent;
 import android.net.Uri;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -24,10 +23,19 @@ public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
 
+    private final int GREEN = Color.rgb(0, 255, 100);
+    private final int CYAN = Color.rgb(0, 220, 255);
+    private final int WHITE = Color.WHITE;
+    private final int MUTED = Color.rgb(155, 170, 165);
+    private final int BG = Color.rgb(5, 8, 8);
+    private final int CARD = Color.rgb(13, 18, 17);
+    private final int CARD_DARK = Color.rgb(9, 13, 13);
+    private final int KEY = Color.rgb(22, 29, 27);
+
     private int dp(int value) {
         return (int) (
                 value * getResources().getDisplayMetrics().density
-                + 0.5f
+                        + 0.5f
         );
     }
 
@@ -46,7 +54,10 @@ public class MainActivity extends Activity {
     private void buildStyleApp() {
 
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.BLACK);
+
+        scroll.setBackgroundColor(BG);
+
+        scroll.setFillViewport(true);
 
         LinearLayout main = new LinearLayout(this);
 
@@ -56,135 +67,230 @@ public class MainActivity extends Activity {
 
         main.setPadding(
                 dp(18),
-                dp(24),
+                dp(20),
                 dp(18),
-                dp(30)
+                dp(35)
         );
 
         scroll.addView(main);
+
+        /*
+         * HERO
+         */
+
+        LinearLayout hero = cardLayout();
+
+        hero.setGravity(Gravity.CENTER);
+
+        hero.setPadding(
+                dp(18),
+                dp(24),
+                dp(18),
+                dp(24)
+        );
+
+        TextView logo = new TextView(this);
+
+        logo.setText("M");
+        logo.setTextColor(GREEN);
+        logo.setTextSize(34);
+        logo.setGravity(Gravity.CENTER);
+
+        logo.setBackground(
+                roundedBackground(
+                        Color.rgb(8, 25, 17),
+                        GREEN,
+                        1,
+                        100
+                )
+        );
+
+        hero.addView(
+                logo,
+                new LinearLayout.LayoutParams(
+                        dp(68),
+                        dp(68)
+                )
+        );
 
         TextView title = new TextView(this);
 
         title.setText("MAGICBOARD");
 
-        title.setTextColor(
-                Color.rgb(0, 255, 100)
+        title.setTextColor(WHITE);
+
+        title.setTextSize(28);
+
+        title.setGravity(Gravity.CENTER);
+
+        title.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
         );
 
-        title.setTextSize(30);
+        LinearLayout.LayoutParams titleParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
 
-        title.setGravity(
-                Gravity.CENTER
+        titleParams.topMargin = dp(14);
+
+        hero.addView(
+                title,
+                titleParams
         );
-
-        title.setPadding(
-                0,
-                0,
-                0,
-                dp(8)
-        );
-
-        main.addView(title);
 
         TextView subtitle = new TextView(this);
 
         subtitle.setText(
-                "KEYBOARD STYLE"
+                "FUTURISTIC ANDROID KEYBOARD"
         );
 
-        subtitle.setTextColor(
-                Color.WHITE
-        );
+        subtitle.setTextColor(GREEN);
 
-        subtitle.setTextSize(14);
+        subtitle.setTextSize(11);
 
-        subtitle.setGravity(
-                Gravity.CENTER
-        );
+        subtitle.setGravity(Gravity.CENTER);
 
-        subtitle.setPadding(
-                0,
-                0,
-                0,
-                dp(20)
-        );
+        subtitle.setLetterSpacing(0.12f);
 
-        main.addView(subtitle);
-
-        /*
-         * Preview
-         */
-
-        TextView previewTitle =
-                sectionTitle(
-                        "LIVE STYLE PREVIEW"
+        LinearLayout.LayoutParams subtitleParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
                 );
 
-        main.addView(previewTitle);
+        subtitleParams.topMargin = dp(5);
+
+        hero.addView(
+                subtitle,
+                subtitleParams
+        );
+
+        TextView status = new TextView(this);
+
+        status.setText("●  STYLE ENGINE ONLINE");
+
+        status.setTextColor(CYAN);
+
+        status.setTextSize(11);
+
+        status.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams statusParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        statusParams.topMargin = dp(14);
+
+        hero.addView(
+                status,
+                statusParams
+        );
+
+        addViewWithMargin(
+                main,
+                hero,
+                0,
+                0,
+                0,
+                14
+        );
+
+        /*
+         * LIVE PREVIEW
+         */
+
+        LinearLayout previewCard =
+                createSectionCard();
+
+        previewCard.addView(
+                sectionHeader(
+                        "LIVE PREVIEW",
+                        "See your keyboard style instantly"
+                )
+        );
 
         LinearLayout preview =
                 new LinearLayout(this);
+
+        preview.setOrientation(
+                LinearLayout.VERTICAL
+        );
 
         preview.setGravity(
                 Gravity.CENTER
         );
 
         preview.setPadding(
-                dp(8),
-                dp(14),
-                dp(8),
-                dp(14)
+                dp(12),
+                dp(16),
+                dp(12),
+                dp(16)
         );
 
         preview.setBackground(
                 roundedBackground(
                         getBackgroundColor(),
-                        Color.rgb(0, 255, 100),
+                        GREEN,
                         1,
                         getCornerRadius()
                 )
         );
 
-        TextView previewKey =
-                new TextView(this);
+        LinearLayout keyRow1 =
+                previewKeyRow(
+                        new String[]{"Q", "W", "E", "R", "T", "Y"}
+                );
 
-        previewKey.setText("A");
+        LinearLayout keyRow2 =
+                previewKeyRow(
+                        new String[]{"A", "S", "D", "F", "G", "H"}
+                );
 
-        previewKey.setTextColor(
-                getLetterColor()
-        );
+        LinearLayout keyRow3 =
+                previewKeyRow(
+                        new String[]{"Z", "X", "C", "V", "B", "N"}
+                );
 
-        previewKey.setTextSize(25);
+        preview.addView(keyRow1);
+        preview.addView(keyRow2);
+        preview.addView(keyRow3);
 
-        previewKey.setGravity(
-                Gravity.CENTER
-        );
-
-        previewKey.setBackground(
-                roundedBackground(
-                        Color.rgb(24, 24, 24),
-                        Color.rgb(0, 255, 100),
-                        1,
-                        getCornerRadius()
-                )
-        );
-
-        preview.addView(
-                previewKey,
+        LinearLayout.LayoutParams previewParams =
                 new LinearLayout.LayoutParams(
-                        dp(70),
-                        dp(55)
-                )
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(190)
+                );
+
+        previewParams.topMargin = dp(12);
+
+        previewCard.addView(
+                preview,
+                previewParams
         );
 
-        main.addView(preview);
+        main.addView(previewCard);
 
         /*
-         * Background color
+         * APPEARANCE
          */
 
-        main.addView(
-                sectionTitle(
+        LinearLayout appearance =
+                createSectionCard();
+
+        appearance.addView(
+                sectionHeader(
+                        "APPEARANCE",
+                        "Customize your keyboard environment"
+                )
+        );
+
+        appearance.addView(
+                sectionLabel(
                         "BACKGROUND COLOR"
                 )
         );
@@ -210,25 +316,16 @@ public class MainActivity extends Activity {
                 Color.rgb(0, 25, 45)
         };
 
-        for (int i = 0;
-             i < colors.length;
-             i++) {
+        for (int i = 0; i < colors.length; i++) {
 
             final int selectedColor =
                     colorValues[i];
 
             Button button =
-                    new Button(this);
-
-            button.setText(
-                    colors[i]
-            );
-
-            button.setTextSize(9);
-
-            button.setTextColor(
-                    Color.WHITE
-            );
+                    miniButton(
+                            colors[i],
+                            WHITE
+                    );
 
             button.setOnClickListener(v -> {
 
@@ -239,40 +336,45 @@ public class MainActivity extends Activity {
                         )
                         .apply();
 
-                Toast.makeText(
-                        this,
-                        "Background saved",
-                        Toast.LENGTH_SHORT
-                ).show();
+                toast(
+                        "Background color saved"
+                );
 
                 buildStyleApp();
             });
 
-            colorRow.addView(
-                    button,
+            LinearLayout.LayoutParams params =
                     new LinearLayout.LayoutParams(
                             0,
-                            dp(55),
+                            dp(48),
                             1
-                    )
+                    );
+
+            params.setMargins(
+                    dp(2),
+                    dp(2),
+                    dp(2),
+                    dp(2)
+            );
+
+            colorRow.addView(
+                    button,
+                    params
             );
         }
 
-        main.addView(colorRow);
+        appearance.addView(colorRow);
 
-        /*
-         * Background photo
-         */
-
-        main.addView(
-                sectionTitle(
+        appearance.addView(
+                sectionLabel(
                         "BACKGROUND PHOTO"
                 )
         );
 
         Button photoButton =
-                styleButton(
-                        "SELECT BACKGROUND PHOTO"
+                actionButton(
+                        "＋  SELECT BACKGROUND PHOTO",
+                        GREEN
                 );
 
         photoButton.setOnClickListener(v -> {
@@ -296,11 +398,12 @@ public class MainActivity extends Activity {
             );
         });
 
-        main.addView(photoButton);
+        appearance.addView(photoButton);
 
         Button removePhoto =
-                styleButton(
-                        "REMOVE BACKGROUND PHOTO"
+                actionButton(
+                        "REMOVE BACKGROUND PHOTO",
+                        Color.rgb(255, 95, 95)
                 );
 
         removePhoto.setOnClickListener(v -> {
@@ -311,23 +414,17 @@ public class MainActivity extends Activity {
                     )
                     .apply();
 
-            Toast.makeText(
-                    this,
-                    "Background photo removed",
-                    Toast.LENGTH_SHORT
-            ).show();
+            toast(
+                    "Background photo removed"
+            );
 
             buildStyleApp();
         });
 
-        main.addView(removePhoto);
+        appearance.addView(removePhoto);
 
-        /*
-         * LETTER COLOR
-         */
-
-        main.addView(
-                sectionTitle(
+        appearance.addView(
+                sectionLabel(
                         "LETTER COLOR"
                 )
         );
@@ -359,34 +456,16 @@ public class MainActivity extends Activity {
                 Color.rgb(255, 100, 200)
         };
 
-        for (int i = 0;
-             i < letterColors.length;
-             i++) {
+        for (int i = 0; i < letterColors.length; i++) {
 
             final int selectedLetterColor =
                     letterColorValues[i];
 
             Button button =
-                    new Button(this);
-
-            button.setText(
-                    letterColors[i]
-            );
-
-            button.setTextSize(9);
-
-            button.setTextColor(
-                    selectedLetterColor
-            );
-
-            button.setBackground(
-                    roundedBackground(
-                            Color.rgb(18, 18, 18),
-                            Color.rgb(0, 255, 100),
-                            1,
-                            8
-                    )
-            );
+                    miniButton(
+                            letterColors[i],
+                            selectedLetterColor
+                    );
 
             button.setOnClickListener(v -> {
 
@@ -397,11 +476,9 @@ public class MainActivity extends Activity {
                         )
                         .apply();
 
-                Toast.makeText(
-                        this,
-                        "Letter color saved",
-                        Toast.LENGTH_SHORT
-                ).show();
+                toast(
+                        "Letter color saved"
+                );
 
                 buildStyleApp();
             });
@@ -409,7 +486,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams params =
                     new LinearLayout.LayoutParams(
                             0,
-                            dp(55),
+                            dp(48),
                             1
                     );
 
@@ -426,32 +503,38 @@ public class MainActivity extends Activity {
             );
         }
 
-        main.addView(
+        appearance.addView(
                 letterColorRow
         );
 
+        addViewWithMargin(
+                main,
+                appearance,
+                0,
+                14,
+                0,
+                0
+        );
+
         /*
-         * Liquid animation
+         * EFFECTS
          */
 
-        main.addView(
-                sectionTitle(
-                        "TOUCH EFFECTS"
+        LinearLayout effects =
+                createSectionCard();
+
+        effects.addView(
+                sectionHeader(
+                        "TOUCH EFFECTS",
+                        "Control interactive keyboard animations"
                 )
         );
 
         Switch liquidSwitch =
-                new Switch(this);
-
-        liquidSwitch.setText(
-                "LIQUID WATER TOUCH"
-        );
-
-        liquidSwitch.setTextColor(
-                Color.WHITE
-        );
-
-        liquidSwitch.setTextSize(16);
+                createSwitch(
+                        "LIQUID WATER TOUCH",
+                        "Fluid touch interaction"
+                );
 
         liquidSwitch.setChecked(
                 prefs.getBoolean(
@@ -472,22 +555,13 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(
-                liquidSwitch
-        );
+        effects.addView(liquidSwitch);
 
         Switch borderSwitch =
-                new Switch(this);
-
-        borderSwitch.setText(
-                "ANIMATED KEY BORDER"
-        );
-
-        borderSwitch.setTextColor(
-                Color.WHITE
-        );
-
-        borderSwitch.setTextSize(16);
+                createSwitch(
+                        "ANIMATED KEY BORDER",
+                        "Dynamic keyboard borders"
+                );
 
         borderSwitch.setChecked(
                 prefs.getBoolean(
@@ -508,22 +582,36 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(
-                borderSwitch
-        );
+        effects.addView(borderSwitch);
+
+        main.addView(effects);
 
         /*
-         * Key transparency
+         * KEY DESIGN
          */
 
-        main.addView(
-                sectionTitle(
-                        "KEY TRANSPARENCY"
+        LinearLayout keyDesign =
+                createSectionCard();
+
+        keyDesign.addView(
+                sectionHeader(
+                        "KEY DESIGN",
+                        "Fine tune the appearance of every key"
+                )
+        );
+
+        keyDesign.addView(
+                sliderTitle(
+                        "KEY TRANSPARENCY",
+                        prefs.getInt(
+                                "keyTransparency",
+                                100
+                        ) + "%"
                 )
         );
 
         SeekBar transparency =
-                new SeekBar(this);
+                createSeekBar();
 
         transparency.setMax(100);
 
@@ -564,22 +652,19 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(
+        keyDesign.addView(
                 transparency
         );
 
-        /*
-         * Key corner radius
-         */
-
-        main.addView(
-                sectionTitle(
-                        "KEY CORNER RADIUS"
+        keyDesign.addView(
+                sliderTitle(
+                        "KEY CORNER RADIUS",
+                        getCornerRadius() + " dp"
                 )
         );
 
         SeekBar radius =
-                new SeekBar(this);
+                createSeekBar();
 
         radius.setMax(20);
 
@@ -617,24 +702,31 @@ public class MainActivity extends Activity {
                 }
         );
 
-        main.addView(
-                radius
-        );
+        keyDesign.addView(radius);
+
+        main.addView(keyDesign);
 
         /*
-         * Enable keyboard
+         * KEYBOARD
          */
 
-        main.addView(
-                sectionTitle(
-                        "KEYBOARD"
+        LinearLayout keyboard =
+                createSectionCard();
+
+        keyboard.addView(
+                sectionHeader(
+                        "KEYBOARD",
+                        "Activate Magicboard on your device"
                 )
         );
 
         Button enable =
-                styleButton(
-                        "ENABLE MAGICBOARD"
+                actionButton(
+                        "⌨  ENABLE MAGICBOARD",
+                        GREEN
                 );
+
+        enable.setTextSize(15);
 
         enable.setOnClickListener(v -> {
 
@@ -649,17 +741,50 @@ public class MainActivity extends Activity {
             }
         });
 
-        main.addView(
-                enable
+        keyboard.addView(enable);
+
+        TextView info =
+                new TextView(this);
+
+        info.setText(
+                "Select Magicboard from the keyboard list to start typing."
         );
 
+        info.setTextColor(MUTED);
+
+        info.setTextSize(11);
+
+        info.setGravity(Gravity.CENTER);
+
+        info.setPadding(
+                dp(8),
+                dp(8),
+                dp(8),
+                dp(2)
+        );
+
+        keyboard.addView(info);
+
+        main.addView(keyboard);
+
         /*
-         * Reset style
+         * SYSTEM
          */
 
+        LinearLayout system =
+                createSectionCard();
+
+        system.addView(
+                sectionHeader(
+                        "SYSTEM",
+                        "Manage your saved keyboard style"
+                )
+        );
+
         Button reset =
-                styleButton(
-                        "RESET STYLE"
+                actionButton(
+                        "RESET ALL STYLE SETTINGS",
+                        Color.rgb(255, 110, 110)
                 );
 
         reset.setOnClickListener(v -> {
@@ -668,49 +793,331 @@ public class MainActivity extends Activity {
                     .clear()
                     .apply();
 
-            Toast.makeText(
-                    this,
-                    "Style reset",
-                    Toast.LENGTH_SHORT
-            ).show();
+            toast(
+                    "All style settings reset"
+            );
 
             buildStyleApp();
         });
 
-        main.addView(
-                reset
+        system.addView(reset);
+
+        main.addView(system);
+
+        /*
+         * FOOTER
+         */
+
+        TextView footer =
+                new TextView(this);
+
+        footer.setText(
+                "MAGICBOARD  •  STYLE ENGINE\n" +
+                        "Futuristic typing experience"
         );
+
+        footer.setTextColor(
+                Color.rgb(95, 115, 108)
+        );
+
+        footer.setTextSize(10);
+
+        footer.setGravity(
+                Gravity.CENTER
+        );
+
+        footer.setLetterSpacing(0.08f);
+
+        footer.setPadding(
+                0,
+                dp(22),
+                0,
+                0
+        );
+
+        main.addView(footer);
 
         setContentView(scroll);
     }
 
-    private TextView sectionTitle(
+    /*
+     * PREVIEW KEYS
+     */
+
+    private LinearLayout previewKeyRow(
+            String[] letters
+    ) {
+
+        LinearLayout row =
+                new LinearLayout(this);
+
+        row.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        row.setGravity(
+                Gravity.CENTER
+        );
+
+        for (String letter : letters) {
+
+            TextView key =
+                    new TextView(this);
+
+            key.setText(letter);
+
+            key.setTextColor(
+                    getLetterColor()
+            );
+
+            key.setTextSize(13);
+
+            key.setGravity(
+                    Gravity.CENTER
+            );
+
+            key.setBackground(
+                    roundedBackground(
+                            KEY,
+                            GREEN,
+                            1,
+                            getCornerRadius()
+                    )
+            );
+
+            LinearLayout.LayoutParams params =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(38),
+                            1
+                    );
+
+            params.setMargins(
+                    dp(2),
+                    dp(3),
+                    dp(2),
+                    dp(3)
+            );
+
+            row.addView(
+                    key,
+                    params
+            );
+        }
+
+        return row;
+    }
+
+    /*
+     * SECTION CARD
+     */
+
+    private LinearLayout createSectionCard() {
+
+        LinearLayout card =
+                cardLayout();
+
+        card.setPadding(
+                dp(14),
+                dp(15),
+                dp(14),
+                dp(15)
+        );
+
+        return card;
+    }
+
+    private LinearLayout cardLayout() {
+
+        LinearLayout card =
+                new LinearLayout(this);
+
+        card.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        card.setBackground(
+                roundedBackground(
+                        CARD,
+                        Color.rgb(30, 70, 48),
+                        1,
+                        18
+                )
+        );
+
+        return card;
+    }
+
+    /*
+     * SECTION HEADER
+     */
+
+    private LinearLayout sectionHeader(
+            String title,
+            String description
+    ) {
+
+        LinearLayout box =
+                new LinearLayout(this);
+
+        box.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        TextView titleView =
+                new TextView(this);
+
+        titleView.setText(
+                "◈  " + title
+        );
+
+        titleView.setTextColor(
+                GREEN
+        );
+
+        titleView.setTextSize(16);
+
+        titleView.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
+
+        box.addView(titleView);
+
+        TextView descriptionView =
+                new TextView(this);
+
+        descriptionView.setText(
+                description
+        );
+
+        descriptionView.setTextColor(
+                MUTED
+        );
+
+        descriptionView.setTextSize(11);
+
+        LinearLayout.LayoutParams descParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        descParams.topMargin = dp(4);
+
+        box.addView(
+                descriptionView,
+                descParams
+        );
+
+        return box;
+    }
+
+    /*
+     * LABEL
+     */
+
+    private TextView sectionLabel(
             String text
     ) {
 
-        TextView title =
+        TextView label =
                 new TextView(this);
 
-        title.setText(text);
+        label.setText(text);
 
-        title.setTextColor(
-                Color.rgb(0, 255, 100)
+        label.setTextColor(
+                Color.rgb(185, 205, 195)
         );
 
-        title.setTextSize(15);
+        label.setTextSize(11);
 
-        title.setPadding(
-                0,
-                dp(22),
-                0,
+        label.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
+
+        label.setPadding(
+                dp(2),
+                dp(18),
+                dp(2),
+                dp(6)
+        );
+
+        return label;
+    }
+
+    /*
+     * SLIDER TITLE
+     */
+
+    private TextView sliderTitle(
+            String title,
+            String value
+    ) {
+
+        TextView text =
+                new TextView(this);
+
+        text.setText(
+                title + "                                      " + value
+        );
+
+        text.setTextColor(
+                WHITE
+        );
+
+        text.setTextSize(12);
+
+        text.setPadding(
+                dp(2),
+                dp(18),
+                dp(2),
+                dp(3)
+        );
+
+        return text;
+    }
+
+    /*
+     * SWITCH
+     */
+
+    private Switch createSwitch(
+            String title,
+            String description
+    ) {
+
+        Switch sw =
+                new Switch(this);
+
+        sw.setText(
+                title + "\n" + description
+        );
+
+        sw.setTextColor(
+                WHITE
+        );
+
+        sw.setTextSize(14);
+
+        sw.setPadding(
+                dp(2),
+                dp(8),
+                dp(2),
                 dp(8)
         );
 
-        return title;
+        return sw;
     }
 
-    private Button styleButton(
-            String text
+    /*
+     * ACTION BUTTON
+     */
+
+    private Button actionButton(
+            String text,
+            int textColor
     ) {
 
         Button button =
@@ -719,35 +1126,108 @@ public class MainActivity extends Activity {
         button.setText(text);
 
         button.setTextColor(
-                Color.rgb(0, 255, 100)
+                textColor
         );
 
-        button.setTextSize(13);
+        button.setTextSize(12);
 
         button.setAllCaps(false);
 
+        button.setGravity(
+                Gravity.CENTER
+        );
+
         button.setBackground(
                 roundedBackground(
-                        Color.rgb(18, 18, 18),
-                        Color.rgb(0, 255, 100),
+                        CARD_DARK,
+                        Color.rgb(35, 80, 55),
                         1,
-                        10
+                        12
                 )
         );
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(55)
+                        dp(52)
                 );
 
-        params.topMargin = dp(6);
-        params.bottomMargin = dp(6);
+        params.topMargin = dp(7);
+
+        params.bottomMargin = dp(3);
 
         button.setLayoutParams(params);
 
         return button;
     }
+
+    /*
+     * MINI BUTTON
+     */
+
+    private Button miniButton(
+            String text,
+            int textColor
+    ) {
+
+        Button button =
+                new Button(this);
+
+        button.setText(text);
+
+        button.setTextColor(
+                textColor
+        );
+
+        button.setTextSize(8);
+
+        button.setAllCaps(false);
+
+        button.setGravity(
+                Gravity.CENTER
+        );
+
+        button.setPadding(
+                dp(2),
+                0,
+                dp(2),
+                0
+        );
+
+        button.setBackground(
+                roundedBackground(
+                        CARD_DARK,
+                        Color.rgb(35, 80, 55),
+                        1,
+                        10
+                )
+        );
+
+        return button;
+    }
+
+    /*
+     * SEEKBAR
+     */
+
+    private SeekBar createSeekBar() {
+
+        SeekBar seekBar =
+                new SeekBar(this);
+
+        seekBar.setPadding(
+                dp(2),
+                dp(4),
+                dp(2),
+                dp(8)
+        );
+
+        return seekBar;
+    }
+
+    /*
+     * BACKGROUND
+     */
 
     private GradientDrawable roundedBackground(
             int fill,
@@ -773,6 +1253,49 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
+    /*
+     * HELPERS
+     */
+
+    private void addViewWithMargin(
+            LinearLayout parent,
+            View view,
+            int left,
+            int top,
+            int right,
+            int bottom
+    ) {
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        params.setMargins(
+                dp(left),
+                dp(top),
+                dp(right),
+                dp(bottom)
+        );
+
+        parent.addView(
+                view,
+                params
+        );
+    }
+
+    private void toast(
+            String message
+    ) {
+
+        Toast.makeText(
+                this,
+                message,
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
     private int getBackgroundColor() {
 
         return prefs.getInt(
@@ -796,6 +1319,10 @@ public class MainActivity extends Activity {
                 Color.WHITE
         );
     }
+
+    /*
+     * BACKGROUND PHOTO
+     */
 
     @Override
     protected void onActivityResult(
@@ -836,11 +1363,9 @@ public class MainActivity extends Activity {
                         )
                         .apply();
 
-                Toast.makeText(
-                        this,
-                        "Background photo saved",
-                        Toast.LENGTH_SHORT
-                ).show();
+                toast(
+                        "Background photo saved"
+                );
 
                 buildStyleApp();
             }
