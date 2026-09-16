@@ -32,6 +32,11 @@ public class MagicboardService extends InputMethodService {
     private boolean emojiMode = false;
     private boolean sinhalaMode = false;
 
+    // Sinhala mode:
+    // false = PHONETIC
+    // true  = UNICODE
+    private boolean sinhalaUnicodeMode = false;
+
     private long lastShiftTap = 0;
 
     private static final int KEYBOARD_CONTENT_HEIGHT = 240;
@@ -163,6 +168,13 @@ public class MagicboardService extends InputMethodService {
                 stylePrefs.getBoolean(
                         "animatedBorder",
                         true
+                );
+
+        // Remember Sinhala PHONETIC / UNICODE mode.
+        sinhalaUnicodeMode =
+                stylePrefs.getBoolean(
+                        "sinhalaUnicodeMode",
+                        false
                 );
 
         loadBackgroundImage();
@@ -958,7 +970,35 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
+    /*
+     * ============================================================
+     * SINHALA KEYBOARD
+     * ============================================================
+     *
+     * PHONETIC:
+     * Existing QWERTY phonetic keyboard.
+     *
+     * UNICODE:
+     * Direct Sinhala Unicode characters.
+     *
+     * The mode is changed from the control-row PHO/UNI button,
+     * so the keyboard height remains unchanged.
+     * ============================================================
+     */
+
     private void buildSinhalaKeyboard() {
+
+        if (sinhalaUnicodeMode) {
+
+            buildSinhalaUnicodeKeyboard();
+
+        } else {
+
+            buildSinhalaPhoneticKeyboard();
+        }
+    }
+
+    private void buildSinhalaPhoneticKeyboard() {
 
         addSinhalaPhoneticRow(
                 "QWERTYUIOP"
@@ -986,6 +1026,308 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
 
         addSinhalaPhoneticControlRow();
+    }
+
+    /*
+     * ============================================================
+     * SINHALA UNICODE KEYBOARD
+     * ============================================================
+     */
+
+    private void buildSinhalaUnicodeKeyboard() {
+
+        /*
+         * Row 1 - independent vowels
+         */
+        addSinhalaUnicodeRow(
+                new String[]{
+                        "අ",
+                        "ආ",
+                        "ඇ",
+                        "ඈ",
+                        "ඉ",
+                        "ඊ",
+                        "උ",
+                        "ඌ",
+                        "එ",
+                        "ඒ"
+                }
+        );
+
+        /*
+         * Row 2 - vowels + main consonants
+         */
+        addSinhalaUnicodeRow(
+                new String[]{
+                        "ඔ",
+                        "ඕ",
+                        "ක",
+                        "ග",
+                        "ච",
+                        "ජ",
+                        "ට",
+                        "ඩ",
+                        "ත",
+                        "ද"
+                }
+        );
+
+        /*
+         * Row 3 - consonants
+         */
+        LinearLayout row =
+                createRow(60);
+
+        addSinhalaUnicodeExtraKey(
+                row,
+                "⇧",
+                1.35f,
+                v -> toggleSinhalaUnicodeShift()
+        );
+
+        addSinhalaUnicodeKey(row, "න");
+        addSinhalaUnicodeKey(row, "ප");
+        addSinhalaUnicodeKey(row, "බ");
+        addSinhalaUnicodeKey(row, "ම");
+        addSinhalaUnicodeKey(row, "ය");
+        addSinhalaUnicodeKey(row, "ර");
+        addSinhalaUnicodeKey(row, "ල");
+
+        addSinhalaUnicodeBackspace(row);
+
+        keyboard.addView(row);
+
+        addSinhalaUnicodeControlRow();
+    }
+
+    private void addSinhalaUnicodeRow(
+            String[] values
+    ) {
+
+        LinearLayout row =
+                createRow(60);
+
+        for (String value : values) {
+
+            addSinhalaUnicodeKey(
+                    row,
+                    value
+            );
+        }
+
+        keyboard.addView(row);
+    }
+
+    private void addSinhalaUnicodeKey(
+            LinearLayout row,
+            String value
+    ) {
+
+        Button button =
+                createKey(
+                        value,
+                        1
+                );
+
+        button.setTextSize(17);
+
+        button.setOnClickListener(
+                v -> commitSinhalaUnicode(
+                        value
+                )
+        );
+
+        row.addView(button);
+    }
+
+    private void addSinhalaUnicodeExtraKey(
+            LinearLayout row,
+            String text,
+            float weight,
+            View.OnClickListener listener
+    ) {
+
+        Button button =
+                createKey(
+                        text,
+                        weight
+                );
+
+        button.setOnClickListener(
+                listener
+        );
+
+        row.addView(button);
+    }
+
+    private void addSinhalaUnicodeBackspace(
+            LinearLayout row
+    ) {
+
+        Button button =
+                createKey(
+                        "⌫",
+                        1.35f
+                );
+
+        button.setOnTouchListener(
+                (v, event) -> {
+
+                    if (event.getAction() ==
+                            MotionEvent.ACTION_DOWN) {
+
+                        deleteAtCursor();
+
+                        deleteHandler.postDelayed(
+                                deleteRunnable,
+                                450
+                        );
+
+                        return true;
+                    }
+
+                    if (
+                            event.getAction() ==
+                                    MotionEvent.ACTION_UP ||
+                            event.getAction() ==
+                                    MotionEvent.ACTION_CANCEL
+                    ) {
+
+                        deleteHandler.removeCallbacks(
+                                deleteRunnable
+                        );
+
+                        return true;
+                    }
+
+                    return true;
+                }
+        );
+
+        row.addView(button);
+    }
+
+    private void toggleSinhalaUnicodeShift() {
+
+        /*
+         * Unicode mode uses Shift to expose additional
+         * Sinhala signs/letters without adding another row.
+         */
+        shiftOn = !shiftOn;
+
+        refreshKeyboard();
+    }
+
+    private void commitSinhalaUnicode(
+            String value
+    ) {
+
+        if (value == null ||
+                value.length() == 0) {
+
+            return;
+        }
+
+        commit(value);
+    }
+
+    private void addSinhalaUnicodeControlRow() {
+
+        LinearLayout row =
+                createRow(60);
+
+        Button numbers =
+                createKey(
+                        "123",
+                        1.25f
+                );
+
+        Button emoji =
+                createKey(
+                        "😊",
+                        1.0f
+                );
+
+        Button mode =
+                createKey(
+                        "UNI",
+                        1.25f
+                );
+
+        Button space =
+                createKey(
+                        "SPACE",
+                        3.3f
+                );
+
+        Button enter =
+                createKey(
+                        "↵",
+                        1.35f
+                );
+
+        numbers.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            numberMode = true;
+            emojiMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        emoji.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            emojiMode = true;
+            numberMode = false;
+            sinhalaMode = false;
+
+            refreshKeyboard();
+        });
+
+        mode.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            sinhalaUnicodeMode = false;
+
+            stylePrefs.edit()
+                    .putBoolean(
+                            "sinhalaUnicodeMode",
+                            false
+                    )
+                    .apply();
+
+            shiftOn = false;
+            capsLock = false;
+
+            refreshKeyboard();
+        });
+
+        space.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            commit(" ");
+        });
+
+        enter.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            sendEnter();
+        });
+
+        row.addView(numbers);
+        row.addView(emoji);
+        row.addView(mode);
+        row.addView(space);
+        row.addView(enter);
+
+        keyboard.addView(row);
     }
 
     private void addSinhalaPhoneticRow(
@@ -1164,9 +1506,9 @@ public class MagicboardService extends InputMethodService {
                         1.0f
                 );
 
-        Button english =
+        Button mode =
                 createKey(
-                        "ABC",
+                        "PHO",
                         1.25f
                 );
 
@@ -1208,19 +1550,21 @@ public class MagicboardService extends InputMethodService {
             refreshKeyboard();
         });
 
-        english.setOnClickListener(v -> {
+        mode.setOnClickListener(v -> {
 
             finishSinhalaComposition();
 
-            sinhalaMode = false;
+            sinhalaUnicodeMode = true;
+
+            stylePrefs.edit()
+                    .putBoolean(
+                            "sinhalaUnicodeMode",
+                            true
+                    )
+                    .apply();
 
             shiftOn = false;
-
             capsLock = false;
-
-            numberMode = false;
-
-            emojiMode = false;
 
             refreshKeyboard();
         });
@@ -1241,7 +1585,7 @@ public class MagicboardService extends InputMethodService {
 
         row.addView(numbers);
         row.addView(emoji);
-        row.addView(english);
+        row.addView(mode);
         row.addView(space);
         row.addView(enter);
 
@@ -2225,28 +2569,6 @@ public class MagicboardService extends InputMethodService {
      * ============================================================
      * CURSOR-AWARE DELETE ENGINE
      * ============================================================
-     *
-     * This is the important fix.
-     *
-     * The old logic deleted from sinhalaBuffer only.
-     * Therefore moving the cursor into the middle of text
-     * could still delete from the end of the Sinhala buffer.
-     *
-     * This version first checks the actual editor cursor.
-     * It uses the text immediately BEFORE the cursor and
-     * deletes one Unicode grapheme cluster.
-     *
-     * Examples:
-     *
-     *   මම ඔයා
-     *       ^
-     *
-     * Backspace deletes the character immediately before
-     * the cursor, not the final character of the whole text.
-     *
-     * Combined Sinhala characters and emoji are handled
-     * using BreakIterator.
-     * ============================================================
      */
 
     private void deleteAtCursor() {
@@ -2258,15 +2580,6 @@ public class MagicboardService extends InputMethodService {
             return;
         }
 
-        /*
-         * If an active Sinhala composition is currently at
-         * the cursor, keep normal phonetic editing behaviour.
-         *
-         * We verify that the composed Sinhala text is actually
-         * immediately before the cursor. This prevents the
-         * buffer from incorrectly controlling deletion after
-         * the user moves the cursor somewhere else.
-         */
         if (sinhalaBuffer.length() > 0) {
 
             String composed =
@@ -2293,13 +2606,6 @@ public class MagicboardService extends InputMethodService {
                 return;
             }
 
-            /*
-             * Cursor is no longer at the end of the active
-             * Sinhala composition.
-             *
-             * Finish the composition first, then use the
-             * real cursor position.
-             */
             finishSinhalaComposition();
         }
 
@@ -2341,10 +2647,6 @@ public class MagicboardService extends InputMethodService {
             return;
         }
 
-        /*
-         * Read enough text before the cursor to identify
-         * the previous grapheme cluster.
-         */
         CharSequence beforeCursor =
                 input.getTextBeforeCursor(
                         100,
@@ -2394,10 +2696,6 @@ public class MagicboardService extends InputMethodService {
             return;
         }
 
-        /*
-         * Delete exactly the grapheme immediately before
-         * the current cursor.
-         */
         input.deleteSurroundingText(
                 deleteLength,
                 0
@@ -2406,12 +2704,6 @@ public class MagicboardService extends InputMethodService {
 
     private void deleteSinhalaCharacter() {
 
-        /*
-         * Kept as a compatibility method for the Sinhala
-         * Backspace button.
-         *
-         * Actual deletion is now cursor-aware.
-         */
         deleteAtCursor();
     }
 
@@ -2788,10 +3080,6 @@ public class MagicboardService extends InputMethodService {
 
     private void deleteOne() {
 
-        /*
-         * ALL keyboard modes now use the same
-         * cursor-aware deletion engine.
-         */
         deleteAtCursor();
     }
 
