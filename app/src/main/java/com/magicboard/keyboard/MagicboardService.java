@@ -34,8 +34,14 @@ public class MagicboardService extends InputMethodService {
 
     // Sinhala mode:
     // false = PHONETIC
-    // true  = UNICODE
+    // true  = UNICODE OUTPUT
+    //
+    // IMPORTANT:
+    // Both modes use the SAME phonetic QWERTY keyboard.
     private boolean sinhalaUnicodeMode = false;
+
+    // Emoji category
+    private int emojiCategory = 0;
 
     private long lastShiftTap = 0;
 
@@ -170,7 +176,6 @@ public class MagicboardService extends InputMethodService {
                         true
                 );
 
-        // Remember Sinhala PHONETIC / UNICODE mode.
         sinhalaUnicodeMode =
                 stylePrefs.getBoolean(
                         "sinhalaUnicodeMode",
@@ -762,6 +767,10 @@ public class MagicboardService extends InputMethodService {
         );
     }
 
+    // ============================================================
+    // ENGLISH KEYBOARD
+    // ============================================================
+
     private void buildLetterKeyboard() {
 
         addLetterRow("QWERTYUIOP");
@@ -970,32 +979,65 @@ public class MagicboardService extends InputMethodService {
         row.addView(button);
     }
 
+    // ============================================================
+    // SINHALA KEYBOARD
+    // ============================================================
+
     /*
-     * ============================================================
-     * SINHALA KEYBOARD
-     * ============================================================
+     * IMPORTANT:
      *
-     * PHONETIC:
-     * Existing QWERTY phonetic keyboard.
+     * There is NO traditional Sinhala Unicode layout here.
      *
-     * UNICODE:
-     * Direct Sinhala Unicode characters.
+     * PHONETIC and UNICODE use exactly the same QWERTY keys.
      *
-     * The mode is changed from the control-row PHO/UNI button,
-     * so the keyboard height remains unchanged.
-     * ============================================================
+     * UNICODE is only a small top indicator/toggle.
      */
 
     private void buildSinhalaKeyboard() {
 
-        if (sinhalaUnicodeMode) {
+        addSinhalaUnicodeBar();
 
-            buildSinhalaUnicodeKeyboard();
+        buildSinhalaPhoneticKeyboard();
+    }
 
-        } else {
+    private void addSinhalaUnicodeBar() {
 
-            buildSinhalaPhoneticKeyboard();
-        }
+        LinearLayout row =
+                createRow(28);
+
+        Button unicode =
+                createKey(
+                        sinhalaUnicodeMode
+                                ? "UNICODE ✓"
+                                : "UNICODE",
+                        1
+                );
+
+        unicode.setTextSize(11);
+
+        unicode.setOnClickListener(v -> {
+
+            finishSinhalaComposition();
+
+            sinhalaUnicodeMode =
+                    !sinhalaUnicodeMode;
+
+            stylePrefs.edit()
+                    .putBoolean(
+                            "sinhalaUnicodeMode",
+                            sinhalaUnicodeMode
+                    )
+                    .apply();
+
+            shiftOn = false;
+            capsLock = false;
+
+            refreshKeyboard();
+        });
+
+        row.addView(unicode);
+
+        keyboard.addView(row);
     }
 
     private void buildSinhalaPhoneticKeyboard() {
@@ -1026,308 +1068,6 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
 
         addSinhalaPhoneticControlRow();
-    }
-
-    /*
-     * ============================================================
-     * SINHALA UNICODE KEYBOARD
-     * ============================================================
-     */
-
-    private void buildSinhalaUnicodeKeyboard() {
-
-        /*
-         * Row 1 - independent vowels
-         */
-        addSinhalaUnicodeRow(
-                new String[]{
-                        "අ",
-                        "ආ",
-                        "ඇ",
-                        "ඈ",
-                        "ඉ",
-                        "ඊ",
-                        "උ",
-                        "ඌ",
-                        "එ",
-                        "ඒ"
-                }
-        );
-
-        /*
-         * Row 2 - vowels + main consonants
-         */
-        addSinhalaUnicodeRow(
-                new String[]{
-                        "ඔ",
-                        "ඕ",
-                        "ක",
-                        "ග",
-                        "ච",
-                        "ජ",
-                        "ට",
-                        "ඩ",
-                        "ත",
-                        "ද"
-                }
-        );
-
-        /*
-         * Row 3 - consonants
-         */
-        LinearLayout row =
-                createRow(60);
-
-        addSinhalaUnicodeExtraKey(
-                row,
-                "⇧",
-                1.35f,
-                v -> toggleSinhalaUnicodeShift()
-        );
-
-        addSinhalaUnicodeKey(row, "න");
-        addSinhalaUnicodeKey(row, "ප");
-        addSinhalaUnicodeKey(row, "බ");
-        addSinhalaUnicodeKey(row, "ම");
-        addSinhalaUnicodeKey(row, "ය");
-        addSinhalaUnicodeKey(row, "ර");
-        addSinhalaUnicodeKey(row, "ල");
-
-        addSinhalaUnicodeBackspace(row);
-
-        keyboard.addView(row);
-
-        addSinhalaUnicodeControlRow();
-    }
-
-    private void addSinhalaUnicodeRow(
-            String[] values
-    ) {
-
-        LinearLayout row =
-                createRow(60);
-
-        for (String value : values) {
-
-            addSinhalaUnicodeKey(
-                    row,
-                    value
-            );
-        }
-
-        keyboard.addView(row);
-    }
-
-    private void addSinhalaUnicodeKey(
-            LinearLayout row,
-            String value
-    ) {
-
-        Button button =
-                createKey(
-                        value,
-                        1
-                );
-
-        button.setTextSize(17);
-
-        button.setOnClickListener(
-                v -> commitSinhalaUnicode(
-                        value
-                )
-        );
-
-        row.addView(button);
-    }
-
-    private void addSinhalaUnicodeExtraKey(
-            LinearLayout row,
-            String text,
-            float weight,
-            View.OnClickListener listener
-    ) {
-
-        Button button =
-                createKey(
-                        text,
-                        weight
-                );
-
-        button.setOnClickListener(
-                listener
-        );
-
-        row.addView(button);
-    }
-
-    private void addSinhalaUnicodeBackspace(
-            LinearLayout row
-    ) {
-
-        Button button =
-                createKey(
-                        "⌫",
-                        1.35f
-                );
-
-        button.setOnTouchListener(
-                (v, event) -> {
-
-                    if (event.getAction() ==
-                            MotionEvent.ACTION_DOWN) {
-
-                        deleteAtCursor();
-
-                        deleteHandler.postDelayed(
-                                deleteRunnable,
-                                450
-                        );
-
-                        return true;
-                    }
-
-                    if (
-                            event.getAction() ==
-                                    MotionEvent.ACTION_UP ||
-                            event.getAction() ==
-                                    MotionEvent.ACTION_CANCEL
-                    ) {
-
-                        deleteHandler.removeCallbacks(
-                                deleteRunnable
-                        );
-
-                        return true;
-                    }
-
-                    return true;
-                }
-        );
-
-        row.addView(button);
-    }
-
-    private void toggleSinhalaUnicodeShift() {
-
-        /*
-         * Unicode mode uses Shift to expose additional
-         * Sinhala signs/letters without adding another row.
-         */
-        shiftOn = !shiftOn;
-
-        refreshKeyboard();
-    }
-
-    private void commitSinhalaUnicode(
-            String value
-    ) {
-
-        if (value == null ||
-                value.length() == 0) {
-
-            return;
-        }
-
-        commit(value);
-    }
-
-    private void addSinhalaUnicodeControlRow() {
-
-        LinearLayout row =
-                createRow(60);
-
-        Button numbers =
-                createKey(
-                        "123",
-                        1.25f
-                );
-
-        Button emoji =
-                createKey(
-                        "😊",
-                        1.0f
-                );
-
-        Button mode =
-                createKey(
-                        "UNI",
-                        1.25f
-                );
-
-        Button space =
-                createKey(
-                        "SPACE",
-                        3.3f
-                );
-
-        Button enter =
-                createKey(
-                        "↵",
-                        1.35f
-                );
-
-        numbers.setOnClickListener(v -> {
-
-            finishSinhalaComposition();
-
-            numberMode = true;
-            emojiMode = false;
-            sinhalaMode = false;
-
-            refreshKeyboard();
-        });
-
-        emoji.setOnClickListener(v -> {
-
-            finishSinhalaComposition();
-
-            emojiMode = true;
-            numberMode = false;
-            sinhalaMode = false;
-
-            refreshKeyboard();
-        });
-
-        mode.setOnClickListener(v -> {
-
-            finishSinhalaComposition();
-
-            sinhalaUnicodeMode = false;
-
-            stylePrefs.edit()
-                    .putBoolean(
-                            "sinhalaUnicodeMode",
-                            false
-                    )
-                    .apply();
-
-            shiftOn = false;
-            capsLock = false;
-
-            refreshKeyboard();
-        });
-
-        space.setOnClickListener(v -> {
-
-            finishSinhalaComposition();
-
-            commit(" ");
-        });
-
-        enter.setOnClickListener(v -> {
-
-            finishSinhalaComposition();
-
-            sendEnter();
-        });
-
-        row.addView(numbers);
-        row.addView(emoji);
-        row.addView(mode);
-        row.addView(space);
-        row.addView(enter);
-
-        keyboard.addView(row);
     }
 
     private void addSinhalaPhoneticRow(
@@ -1373,6 +1113,10 @@ public class MagicboardService extends InputMethodService {
 
         button.setOnClickListener(v -> {
 
+            /*
+             * Both PHONETIC and UNICODE modes use
+             * the same Unicode Sinhala composition engine.
+             */
             commitSinhalaPhonetic(
                     display
             );
@@ -1506,9 +1250,15 @@ public class MagicboardService extends InputMethodService {
                         1.0f
                 );
 
+        /*
+         * Keep PHO as a secondary mode button.
+         * The actual UNICODE toggle is at the top.
+         */
         Button mode =
                 createKey(
-                        "PHO",
+                        sinhalaUnicodeMode
+                                ? "UNI"
+                                : "PHO",
                         1.25f
                 );
 
@@ -1554,12 +1304,13 @@ public class MagicboardService extends InputMethodService {
 
             finishSinhalaComposition();
 
-            sinhalaUnicodeMode = true;
+            sinhalaUnicodeMode =
+                    !sinhalaUnicodeMode;
 
             stylePrefs.edit()
                     .putBoolean(
                             "sinhalaUnicodeMode",
-                            true
+                            sinhalaUnicodeMode
                     )
                     .apply();
 
@@ -1592,6 +1343,10 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
+    // ============================================================
+    // SINHALA PHONETIC ENGINE
+    // ============================================================
+
     private void commitSinhalaPhonetic(
             String roman
     ) {
@@ -1619,12 +1374,6 @@ public class MagicboardService extends InputMethodService {
                 1
         );
     }
-
-    /*
-     * ============================================================
-     * COMPLETE SINHALA PHONETIC ENGINE
-     * ============================================================
-     */
 
     private String phoneticToSinhala(
             String text
@@ -2565,11 +2314,9 @@ public class MagicboardService extends InputMethodService {
                 );
     }
 
-    /*
-     * ============================================================
-     * CURSOR-AWARE DELETE ENGINE
-     * ============================================================
-     */
+    // ============================================================
+    // DELETE ENGINE
+    // ============================================================
 
     private void deleteAtCursor() {
 
@@ -2726,6 +2473,10 @@ public class MagicboardService extends InputMethodService {
         }
     }
 
+    // ============================================================
+    // MAIN CONTROL ROW
+    // ============================================================
+
     private void addControlRow() {
 
         LinearLayout row =
@@ -2814,6 +2565,10 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
     }
+
+    // ============================================================
+    // NUMBER KEYBOARD
+    // ============================================================
 
     private void buildNumberKeyboard() {
 
@@ -2932,30 +2687,155 @@ public class MagicboardService extends InputMethodService {
         keyboard.addView(row);
     }
 
+    // ============================================================
+    // EMOJI KEYBOARD
+    // ============================================================
+
     private void buildEmojiKeyboard() {
 
-        String[] emojiRows = {
+        /*
+         * Compact category bar.
+         *
+         * Categories:
+         * 0 = People
+         * 1 = Hearts
+         * 2 = Animals
+         * 3 = Food
+         * 4 = Sports
+         * 5 = Travel
+         * 6 = Objects / Symbols
+         */
 
-                "😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😍 🥰 😎 🤓 🤩",
+        LinearLayout categoryRow =
+                createRow(32);
 
-                "😘 😗 😋 😛 😜 🤔 🤗 😐 😑 😶 🙄 😏 😣 😥 😮 🤐",
+        String[] categories = {
 
-                "😯 😪 😫 🥱 😴 🤢 🤮 🤧 😷 🤒 🤕 ❤️ 🧡 💛 💚 💙",
-
-                "💜 🖤 🤍 🤎 💔 💕 💞 💓 💗 💖 💘 💝 💯 👍 👎 👌"
+                "😀",
+                "❤️",
+                "🐱",
+                "🍔",
+                "⚽",
+                "🚗",
+                "💡"
         };
 
-        for (String values :
-                emojiRows) {
+        for (int i = 0;
+             i < categories.length;
+             i++) {
+
+            final int category =
+                    i;
+
+            Button button =
+                    createKey(
+                            categories[i],
+                            1
+                    );
+
+            button.setTextSize(17);
+
+            button.setOnClickListener(
+                    v -> {
+
+                        emojiCategory =
+                                category;
+
+                        refreshKeyboard();
+                    }
+            );
+
+            categoryRow.addView(button);
+        }
+
+        keyboard.addView(categoryRow);
+
+        String[][] emojiCategories = {
+
+                // 0 - PEOPLE
+                {
+                        "😀","😃","😄","😁","😆","😅","😂","🤣",
+                        "🙂","🙃","😉","😊","😇","🥰","😍","🤩",
+                        "😘","😗","😋","😛","😜","🤔","🤗","😎"
+                },
+
+                // 1 - HEARTS
+                {
+                        "❤️","🧡","💛","💚","💙","💜","🖤","🤍",
+                        "🤎","💔","💕","💞","💓","💗","💖","💘",
+                        "💝","💟","❣️","💯","💫","✨","⭐","🌟"
+                },
+
+                // 2 - ANIMALS
+                {
+                        "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼",
+                        "🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈",
+                        "🙉","🙊","🐔","🐧","🐦","🐤","🦄","🐝"
+                },
+
+                // 3 - FOOD
+                {
+                        "🍎","🍏","🍊","🍋","🍌","🍉","🍇","🍓",
+                        "🍒","🍑","🍍","🥝","🍅","🥑","🍔","🍕",
+                        "🌭","🍟","🍿","🍩","🍪","🎂","🍰","🍫"
+                },
+
+                // 4 - SPORTS
+                {
+                        "⚽","🏀","🏈","⚾","🎾","🏐","🏉","🥏",
+                        "🎱","🏓","🏸","🥊","🥋","⛳","🏆","🥇",
+                        "🥈","🥉","🏹","🎯","⛸️","🏋️","🚴","🏊"
+                },
+
+                // 5 - TRAVEL / VEHICLES
+                {
+                        "🚗","🚕","🚌","🚎","🏎️","🚓","🚑","🚒",
+                        "🚚","🚜","✈️","🚁","🚀","🚢","🚤","🚲",
+                        "🛵","🏍️","🚆","🚇","🚉","🗺️","🏠","🏢"
+                },
+
+                // 6 - OBJECTS / SYMBOLS
+                {
+                        "💡","📱","💻","⌚","📷","🎮","🎧","🎵",
+                        "🎸","📚","✏️","🔑","🔒","🔓","🔔","⚙️",
+                        "❤️","🔥","⚡","✅","❌","❗","❓","♻️"
+                }
+        };
+
+        int safeCategory =
+                Math.max(
+                        0,
+                        Math.min(
+                                emojiCategory,
+                                emojiCategories.length - 1
+                        )
+                );
+
+        String[] selected =
+                emojiCategories[
+                        safeCategory
+                ];
+
+        /*
+         * 8-column emoji grid.
+         */
+        int columns = 8;
+
+        int index = 0;
+
+        while (index <
+                selected.length) {
 
             LinearLayout row =
                     createRow(46);
 
-            String[] emojis =
-                    values.split(" ");
+            for (int i = 0;
+                 i < columns &&
+                 index < selected.length;
+                 i++) {
 
-            for (String emoji :
-                    emojis) {
+                final String emoji =
+                        selected[index++];
 
                 Button button =
                         createKey(
@@ -2966,11 +2846,7 @@ public class MagicboardService extends InputMethodService {
                 button.setTextSize(19);
 
                 button.setOnClickListener(
-                        v -> commit(
-                                ((Button)v)
-                                        .getText()
-                                        .toString()
-                        )
+                        v -> commit(emoji)
                 );
 
                 row.addView(button);
@@ -2979,6 +2855,7 @@ public class MagicboardService extends InputMethodService {
             keyboard.addView(row);
         }
 
+        // Bottom controls
         LinearLayout row =
                 createRow(60);
 
@@ -3031,6 +2908,9 @@ public class MagicboardService extends InputMethodService {
 
             sinhalaMode = true;
 
+            shiftOn = false;
+            capsLock = false;
+
             refreshKeyboard();
         });
 
@@ -3061,6 +2941,10 @@ public class MagicboardService extends InputMethodService {
 
         keyboard.addView(row);
     }
+
+    // ============================================================
+    // INPUT
+    // ============================================================
 
     private void commit(
             String value
@@ -3106,6 +2990,10 @@ public class MagicboardService extends InputMethodService {
                 )
         );
     }
+
+    // ============================================================
+    // REFRESH
+    // ============================================================
 
     private void refreshKeyboard() {
 
