@@ -1,0 +1,13 @@
+Magicboard is a futuristic Android keyboard designed for a smooth and customizable typing experience.
+
+Features:
+• Sinhala phonetic typing
+• English typing
+• Numbers and emoji
+• Shift, Backspace, Space and Enter keys
+• Customizable keyboard styles
+• Background photo and color settings
+• Touch effects
+• Modern futuristic interface
+
+Magicboard is free and open source software licensed under the Apache License 2.0.
